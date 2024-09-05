@@ -22,7 +22,7 @@ export default function MyApp({ Component, pageProps }) {
   return (
     <>
       <Head>
-        <title>Open University</title>
+        <title>Seed DID</title>
       </Head>
       <WagmiProvider config={config}>
         <AppKitProvider initialState={initialState}>
