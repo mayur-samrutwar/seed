@@ -7,7 +7,6 @@ export default function IssueCredentialContent() {
   const [credentialType, setCredentialType] = useState("aadhar")
   const [walletAddress, setWalletAddress] = useState("")
   const [name, setName] = useState("")
-  const [age, setAge] = useState("")
   const [dob, setDob] = useState("")
   const [post, setPost] = useState("")
   const [salary, setSalary] = useState("")
@@ -33,8 +32,8 @@ export default function IssueCredentialContent() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Wallet Address</label>
-          <Input type="text" placeholder="Enter wallet address" onChange={(e) => setWalletAddress(e.target.value)} className="w-full" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">Seed DID</label>
+          <Input type="text" placeholder="Enter Seed DID" onChange={(e) => setWalletAddress(e.target.value)} className="w-full" />
         </div>
 
         <div>
@@ -47,10 +46,6 @@ export default function IssueCredentialContent() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
               <Input type="text" placeholder="Enter name" onChange={(e) => setName(e.target.value)} className="w-full" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
-              <Input type="number" placeholder="Enter age" onChange={(e) => setAge(e.target.value)} className="w-full" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
