@@ -234,13 +234,13 @@ export default function AirbnbStyleDashboard() {
           </nav>
         </div>
         <div className="mt-auto p-6">
-          <Button
-            variant="outline"
-            className={`w-full justify-start mb-4 border-gray-200 text-gray-600 hover:text-black hover:bg-gray-100 ${isCollapsed ? 'px-2' : ''}`}
-          >
-            <UserIcon className={`h-4 w-4 ${isCollapsed ? 'mx-auto' : 'mr-2'}`} />
-            {!isCollapsed && <span className="font-medium">Connect Wallet</span>}
-          </Button>
+          <>
+            {isCollapsed ? (
+              <w3m-button balance="hide" label="S" />
+            ) : (
+              <w3m-button balance="hide" label="Connect Wallet" />
+            )}
+          </>
         </div>
         <Button
           variant="ghost"
