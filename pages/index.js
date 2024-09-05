@@ -115,30 +115,6 @@ export default function AirbnbStyleDashboard() {
                 </div>
               ))}
             </div>
-            <div className="mt-10 bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
-              <h2 className="text-2xl font-bold mb-6 text-gray-900">Recent Activity</h2>
-              <div className="space-y-6">
-                {[
-                  { action: "Credential Issued", user: "John Doe", time: "2 hours ago" },
-                  { action: "Verification Request", user: "Jane Smith", time: "5 hours ago" },
-                  { action: "Approval Granted", user: "Mike Johnson", time: "1 day ago" },
-                ].map((activity, index) => (
-                  <div key={index} className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0">
-                    <div className="flex items-center">
-                      <Avatar className="h-10 w-10 mr-4">
-                        <AvatarImage src={`https://i.pravatar.cc/150?img=${index + 1}`} />
-                        <AvatarFallback>{activity.user.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-semibold text-gray-900">{activity.action}</p>
-                        <p className="text-sm text-gray-500">{activity.user}</p>
-                      </div>
-                    </div>
-                    <span className="text-sm text-gray-400">{activity.time}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </>
         )
       case "Issue Credential":
