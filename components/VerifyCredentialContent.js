@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Client } from '@xmtp/xmtp-js';
+import { useWalletClient } from 'wagmi';
 
 export default function VerifyCredentialContent() {
   const [step, setStep] = useState(1);
@@ -63,9 +65,39 @@ export default function VerifyCredentialContent() {
     }
   };
 
-  const handleRequest = () => {
-    // Handle the request logic here
-    console.log("Request sent", { aadharDetails, employerDetails });
+  const { data: walletClient } = useWalletClient();
+  const [xmtp, setXmtp] = useState(null);
+
+  const initXmtp = async () => {
+    if (walletClient) {
+      try {
+        const xmtpClient = await Client.create(walletClient, { env: 'production' });
+        setXmtp(xmtpClient);
+      } catch (error) {
+        console.error('Failed to initialize XMTP client:', error);
+      }
+    }
+  };
+
+  const handleRequest = async () => {
+    if (!xmtp) {
+      await initXmtp();
+    }
+
+    if (xmtp) {
+      try {
+        const conversation = await xmtp.conversations.newConversation(address);
+        const message = {
+          type: 'approval_request',
+          company: 'Your Company Name',
+          data: selectedCredential === 'aadhar' ? JSON.stringify(aadharDetails) : JSON.stringify(employerDetails)
+        };
+        await conversation.send(JSON.stringify(message));
+        console.log("Request sent", message);
+      } catch (error) {
+        console.error('Failed to send message:', error);
+      }
+    }
   };
 
   return (
