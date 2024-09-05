@@ -45,7 +45,7 @@ export default function IssueCredentialContent() {
           <>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-              <Input type="text" placeholder="Enter name" onChange={(e) => setName(e.target.value)} className="w-full" />
+              <Input type="text" placeholder="Harry Potter" onChange={(e) => setName(e.target.value)} className="w-full" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
@@ -66,12 +66,12 @@ export default function IssueCredentialContent() {
               <Input type="text" value="Seed Inc." readOnly className="w-full bg-gray-100" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Post</label>
-              <Input type="text" placeholder="Enter post" onChange={(e) => setPost(e.target.value)} className="w-full" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+              <Input type="text" placeholder="Cheif Verification Officer" onChange={(e) => setPost(e.target.value)} className="w-full" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Salary</label>
-              <Input type="number" placeholder="Enter salary" onChange={(e) => setSalary(e.target.value)} className="w-full" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Salary (in USD)</label>
+              <Input type="number" placeholder="200000" onChange={(e) => setSalary(e.target.value)} className="w-full" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Years of Experience</label>
