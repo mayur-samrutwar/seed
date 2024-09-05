@@ -1,4 +1,4 @@
-import {useState} from "react"
+import {useState, useEffect, useCallback} from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -14,12 +14,9 @@ import {
 } from "@/components/ui/select"
 import {
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useAccount, useSignMessage, useConnect, useDisconnect } from 'wagmi'
 
 export default function AirbnbStyleDashboard() {
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -33,12 +30,66 @@ export default function AirbnbStyleDashboard() {
   const [salary, setSalary] = useState("")
   const [yoe, setYoe] = useState("")
 
+  const [user, setUser] = useState(null);
+  const [isReady, setIsReady] = useState(false);
+  const [isSigned, setIsSigned] = useState(false);
+  const { address, isConnected } = useAccount();
+  const { connectAsync, connectors } = useConnect();
+  const { disconnectAsync } = useDisconnect();
+  const { signMessageAsync } = useSignMessage();
+
+  const handleSignMessage = useCallback(async () => {
+    // if address is not available
+    if (!address) {
+      console.error("No address available");
+      return;
+    }
+    try {
+      const signature = await signMessageAsync({ message: "Login to the application" });
+      console.log("Signature received:", signature);
+      setIsSigned(true);
+      // handleLogin(address, signature);
+    } catch (error) {
+      console.error("Error during sign message:", error);
+      await handleReconnect();
+    }
+  }, [address, signMessageAsync]);
+
+  // attemp to reconnect
+  const handleReconnect = async () => {
+    try {
+      await disconnectAsync();
+      const result = await connectAsync({ connector: connectors[0] });
+      if (result?.account) {
+        handleSignMessage();
+      } else {
+      }
+    } catch (error) {
+      console.error("Error during reconnect:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (isConnected && address) {
+      console.log("Wallet connected. Address:", address);
+      setIsReady(true);
+    } else {
+      setIsReady(false);
+    }
+  }, [isConnected, address]);
+
+  useEffect(() => {
+    if (isReady) {
+      handleSignMessage();
+    }
+  }, [isReady, handleSignMessage]);
+
   const menuItems = [
     { icon: HomeIcon, label: "Home" },
     { icon: FileCheckIcon, label: "Issue Credential" },
     { icon: ShieldCheckIcon, label: "Verify Credential" },
     { icon: ClipboardCheckIcon, label: "Approval Request" },
-    { icon: UserIcon, label: "Profile" },
+    ...(isSigned ? [{ icon: UserIcon, label: "Profile" }] : []),
   ]
 
   const renderContent = () => {
