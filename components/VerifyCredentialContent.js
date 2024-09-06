@@ -98,7 +98,7 @@ export default function VerifyCredentialContent() {
   const handleRequest = async () => {
     if (xmtp) {
       try {
-        const conversation = await xmtp.conversations.newConversation(address);
+        const conversation = await xmtp.conversations.newConversation(uaddress);
         const message = {
           type: 'approval_request',
           company: companyName,
@@ -106,10 +106,8 @@ export default function VerifyCredentialContent() {
         };
         await conversation.send(JSON.stringify(message));
         console.log("Verification request sent", message);
-        // You might want to show a success message to the user here
       } catch (error) {
         console.error('Failed to send message:', error);
-        // You might want to show an error message to the user here
       }
     }
   };

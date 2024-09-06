@@ -89,13 +89,13 @@ export default function ApprovalRequestContent() {
                   <div className="flex justify-end space-x-2">
                     <Button 
                       onClick={() => handleApproval(request.id, true)}
-                      className="bg-green-500 hover:bg-green-600 text-white"
+                     
                     >
                       Approve
                     </Button>
                     <Button 
                       onClick={() => handleApproval(request.id, false)}
-                      className="bg-red-500 hover:bg-red-600 text-white"
+                      variant="outline"
                     >
                       Reject
                     </Button>
