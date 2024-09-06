@@ -8,7 +8,6 @@ export default function ApprovalRequestContent() {
   const [xmtp, setXmtp] = useState(null);
   const [approvalRequests, setApprovalRequests] = useState([]);
   const [error, setError] = useState('');
-
   const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
 
@@ -25,40 +24,77 @@ export default function ApprovalRequestContent() {
         }
       }
     };
-
     initXmtp();
   }, [walletClient, xmtp]);
 
   const loadApprovalRequests = async (client) => {
     const conversations = await client.conversations.list();
     const requests = [];
-
     for (const conversation of conversations) {
       const messages = await conversation.messages();
+      let lastRequest = null;
+      let hasResponse = false;
+
       for (const msg of messages) {
         try {
           const content = JSON.parse(msg.content);
-          if (content.type === 'approval_request') {
-            requests.push({
+          if (content.type === 'approval_request' && msg.senderAddress !== address) {
+            lastRequest = {
               id: msg.id,
               company: content.company,
               data: content.data,
-              peerAddress: conversation.peerAddress
-            });
+              peerAddress: msg.senderAddress,
+              timestamp: msg.sent
+            };
+          } else if (content.type === 'request_response' && lastRequest) {
+            hasResponse = true;
+            break;
           }
         } catch (error) {
           // Ignore non-JSON messages
         }
       }
-    }
 
+      if (lastRequest && !hasResponse) {
+        requests.push(lastRequest);
+      }
+    }
     setApprovalRequests(requests);
   };
 
   const handleApproval = async (requestId, isApproved) => {
-    console.log(`Request ${requestId} ${isApproved ? 'approved' : 'rejected'}`);
-    // Remove the request from the list
-    setApprovalRequests(prevRequests => prevRequests.filter(req => req.id !== requestId));
+    if (!xmtp) return;
+
+    const request = approvalRequests.find(req => req.id === requestId);
+    if (!request) return;
+
+    try {
+      const conversation = await xmtp.conversations.newConversation(request.peerAddress);
+      const response = {
+        type: 'request_response',
+        requestId: requestId,
+        approved: isApproved
+      };
+      await conversation.send(JSON.stringify(response));
+
+      // Remove the request from the list
+      setApprovalRequests(prevRequests => prevRequests.filter(req => req.id !== requestId));
+    } catch (error) {
+      console.error('Failed to send response:', error);
+      setError('Failed to send response. Please try again.');
+    }
+  };
+
+  const formatRequestedData = (data) => {
+    const requestedFields = [];
+    for (const [key, value] of Object.entries(JSON.parse(data))) {
+      if (value === true) {
+        requestedFields.push(key.charAt(0).toUpperCase() + key.slice(1));
+      } else if (typeof value === 'object' && value.operator && value.value) {
+        requestedFields.push(`${key.charAt(0).toUpperCase() + key.slice(1)} ${value.operator} ${value.value}`);
+      }
+    }
+    return requestedFields.join(', ');
   };
 
   if (!address) {
@@ -85,15 +121,15 @@ export default function ApprovalRequestContent() {
                 <CardContent className="p-4">
                   <h3 className="text-lg font-semibold mb-2">{request.company} Data Request</h3>
                   <p className="text-sm text-gray-600 mb-2">From: {request.peerAddress}</p>
-                  <p className="text-sm mb-4">Requested data: {request.data}</p>
+                  <p className="text-sm mb-2">Requested data: {formatRequestedData(request.data)}</p>
+                  <p className="text-sm text-gray-500 mb-4">Received: {new Date(request.timestamp).toLocaleString()}</p>
                   <div className="flex justify-end space-x-2">
-                    <Button 
+                    <Button
                       onClick={() => handleApproval(request.id, true)}
-                     
                     >
                       Approve
                     </Button>
-                    <Button 
+                    <Button
                       onClick={() => handleApproval(request.id, false)}
                       variant="outline"
                     >
