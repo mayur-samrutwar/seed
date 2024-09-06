@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Client } from '@xmtp/xmtp-js';
-import { useWalletClient } from 'wagmi';
+import { useWalletClient, useAccount } from 'wagmi';
 
 export default function VerifyCredentialContent() {
   const [step, setStep] = useState(1);
-  const [address, setAddress] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [uaddress, setAddress] = useState('');
   const [selectedCredential, setSelectedCredential] = useState('');
   const [aadharDetails, setAadharDetails] = useState({
     name: false,
@@ -27,13 +28,23 @@ export default function VerifyCredentialContent() {
     salaryValue: '',
   });
 
+  const handleCompanyNameChange = (e) => {
+    setCompanyName(e.target.value);
+  };
+
   const handleAddressChange = (e) => {
     setAddress(e.target.value);
   };
 
   const handleNextStep = () => {
-    if (step === 1 && address) {
-      setStep(2);
+    if (step < 3) {
+      setStep(step + 1);
+    }
+  };
+
+  const handlePreviousStep = () => {
+    if (step > 1) {
+      setStep(step - 1);
     }
   };
 
@@ -65,72 +76,72 @@ export default function VerifyCredentialContent() {
     }
   };
 
+  const { address } = useAccount();
   const { data: walletClient } = useWalletClient();
   const [xmtp, setXmtp] = useState(null);
 
-  const initXmtp = async () => {
-    if (walletClient) {
-      try {
-        const xmtpClient = await Client.create(walletClient, { env: 'production' });
-        setXmtp(xmtpClient);
-      } catch (error) {
-        console.error('Failed to initialize XMTP client:', error);
+  useEffect(() => {
+    const initXmtp = async () => {
+      if (walletClient && !xmtp) {
+        try {
+          const xmtpClient = await Client.create(walletClient, { env: 'production' });
+          setXmtp(xmtpClient);
+        } catch (error) {
+          console.error('Failed to initialize XMTP client:', error);
+        }
       }
-    }
-  };
+    };
+
+    initXmtp();
+  }, [walletClient, xmtp]);
 
   const handleRequest = async () => {
-    if (!xmtp) {
-      await initXmtp();
-    }
-
     if (xmtp) {
       try {
         const conversation = await xmtp.conversations.newConversation(address);
         const message = {
           type: 'approval_request',
-          company: 'Your Company Name',
+          company: companyName,
           data: selectedCredential === 'aadhar' ? JSON.stringify(aadharDetails) : JSON.stringify(employerDetails)
         };
         await conversation.send(JSON.stringify(message));
-        console.log("Request sent", message);
+        console.log("Verification request sent", message);
+        // You might want to show a success message to the user here
       } catch (error) {
         console.error('Failed to send message:', error);
+        // You might want to show an error message to the user here
       }
     }
   };
 
-  return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="text-2xl font-bold text-center">Verify Credential</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-6 flex justify-between">
-          {[1, 2].map((s) => (
-            <div
-              key={s}
-              className={`w-1/2 h-2 ${
-                s <= step ? 'bg-gray-500' : 'bg-gray-200'
-              } ${s === 1 ? 'rounded-l-full' : 'rounded-r-full'}`}
+  const renderStepContent = () => {
+    switch (step) {
+      case 1:
+        return (
+          <>
+            <p className="text-gray-600 mb-4">Enter your company name to proceed.</p>
+            <Input
+              value={companyName}
+              onChange={handleCompanyNameChange}
+              placeholder="Your Company Name"
+              className="mb-4"
             />
-          ))}
-        </div>
-
-        {step === 1 && (
+          </>
+        );
+      case 2:
+        return (
           <>
             <p className="text-gray-600 mb-4">Enter your address to proceed.</p>
             <Input
-              value={address}
+              value={uaddress}
               onChange={handleAddressChange}
               placeholder="Seed DID"
               className="mb-4"
             />
-            <Button onClick={handleNextStep} className="w-full">Next</Button>
           </>
-        )}
-
-        {step === 2 && (
+        );
+      case 3:
+        return (
           <>
             <p className="text-gray-600 mb-4">Select the credential type and choose the details you want to verify.</p>
             <Select onValueChange={handleCredentialChange} className="mb-4">
@@ -250,14 +261,50 @@ export default function VerifyCredentialContent() {
                 )}
               </div>
             )}
+          </>
+        );
+      default:
+        return null;
+    }
+  };
 
-            {selectedCredential && (
-              <Button onClick={handleRequest} className="w-full mt-4">
+  return (
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle className="text-2xl font-bold text-center">Verify Credential</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-6 flex justify-between">
+          {[1, 2, 3].map((s) => (
+            <div
+              key={s}
+              className={`w-1/3 h-2 ${
+                s <= step ? 'bg-gray-500' : 'bg-gray-200'
+              } ${s === 1 ? 'rounded-l-full' : s === 3 ? 'rounded-r-full' : ''}`}
+            />
+          ))}
+        </div>
+
+        {renderStepContent()}
+
+        <div className="flex justify-between mt-6">
+          {step > 1 && (
+            <Button onClick={handlePreviousStep} variant="outline">
+              Back
+            </Button>
+          )}
+          {step < 3 ? (
+            <Button onClick={handleNextStep} className={step === 1 ? "w-full" : ""}>
+              Next
+            </Button>
+          ) : (
+            selectedCredential && (
+              <Button onClick={handleRequest} className="w-full">
                 Request Verification
               </Button>
-            )}
-          </>
-        )}
+            )
+          )}
+        </div>
       </CardContent>
     </Card>
   );

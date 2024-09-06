@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react"
-import { useAccount, useSignMessage, useConnect, useDisconnect } from 'wagmi'
+import { useState, useEffect, useCallback, createContext } from "react"
+import { useAccount, useSignMessage, useConnect, useDisconnect, useWalletClient } from 'wagmi'
+import { Client } from '@xmtp/xmtp-js'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import HomeContent from '@/components/HomeContent'
@@ -8,16 +9,21 @@ import VerifyCredentialContent from '@/components/VerifyCredentialContent'
 import ApprovalRequestContent from '@/components/ApprovalRequestContent'
 import ProfileContent from '@/components/ProfileContent'
 
+export const XmtpContext = createContext(null);
+
 export default function AirbnbStyleDashboard() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [activePage, setActivePage] = useState("Home")
   const [user, setUser] = useState(null)
   const [isReady, setIsReady] = useState(false)
   const [isSigned, setIsSigned] = useState(false)
+  const [xmtpClient, setXmtpClient] = useState(null)
+
   const { address, isConnected } = useAccount()
   const { connectAsync, connectors } = useConnect()
   const { disconnectAsync } = useDisconnect()
   const { signMessageAsync } = useSignMessage()
+  const { data: walletClient } = useWalletClient()
 
   const handleSignMessage = useCallback(async () => {
     if (!address) {
@@ -61,6 +67,21 @@ export default function AirbnbStyleDashboard() {
     }
   }, [isReady, handleSignMessage])
 
+  useEffect(() => {
+    const initXmtp = async () => {
+      if (walletClient && !xmtpClient) {
+        try {
+          const client = await Client.create(walletClient, { env: 'production' });
+          setXmtpClient(client);
+        } catch (error) {
+          console.error('Failed to initialize XMTP client:', error);
+        }
+      }
+    };
+
+    initXmtp();
+  }, [walletClient, xmtpClient]);
+
   const renderContent = () => {
     switch (activePage) {
       case "Home":
@@ -79,20 +100,22 @@ export default function AirbnbStyleDashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-900 font-sans">
-      <Sidebar
-        isCollapsed={isCollapsed}
-        setIsCollapsed={setIsCollapsed}
-        activePage={activePage}
-        setActivePage={setActivePage}
-        isSigned={isSigned}
-      />
-      <main className="flex-1 overflow-hidden flex flex-col">
-        <Header />
-        <div className="flex-1 overflow-y-auto p-8 bg-gray-50">
-          {renderContent()}
-        </div>
-      </main>
-    </div>
+    <XmtpContext.Provider value={xmtpClient}>
+      <div className="flex h-screen bg-gray-50 text-gray-900 font-sans">
+        <Sidebar
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+          activePage={activePage}
+          setActivePage={setActivePage}
+          isSigned={isSigned}
+        />
+        <main className="flex-1 overflow-hidden flex flex-col">
+          <Header />
+          <div className="flex-1 overflow-y-auto p-8 bg-gray-50">
+            {renderContent()}
+          </div>
+        </main>
+      </div>
+    </XmtpContext.Provider>
   )
 }
