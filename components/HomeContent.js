@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { EyeIcon, EyeOffIcon } from 'lucide-react';
 import { useReadContract } from 'wagmi';
 import { Button } from "@/components/ui/button";
-import abi from '@/contracts/abi/helloworld.json';
+import abi from '@/contracts/abi/did.json';
 
 const mockData = [
   {
@@ -31,7 +31,7 @@ export default function HomeContent() {
   const { data, isError, isLoading, error, refetch } = useReadContract({
     address: process.env.NEXT_PUBLIC_HELLO_WORLD_CONTRACT_ADDRESS,
     abi: abi,
-    functionName: 'getMessage',
+    functionName: 'getCurrentYear',
   });
 
   const handleFetchMessage = async () => {
