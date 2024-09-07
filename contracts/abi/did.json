@@ -1,0 +1,307 @@
+[
+	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_address",
+				"type": "address"
+			},
+			{
+				"internalType": "string",
+				"name": "_name",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "_gender",
+				"type": "string"
+			},
+			{
+				"internalType": "uint32",
+				"name": "_dob",
+				"type": "uint32"
+			},
+			{
+				"internalType": "string",
+				"name": "_signUrl",
+				"type": "string"
+			}
+		],
+		"name": "addAadharCredential",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_address",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_companyId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_joiningDate",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "_designation",
+				"type": "string"
+			},
+			{
+				"internalType": "uint32",
+				"name": "_salary",
+				"type": "uint32"
+			},
+			{
+				"internalType": "string",
+				"name": "_signUrl",
+				"type": "string"
+			}
+		],
+		"name": "addJobCredential",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "currentYear",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "bool",
+				"name": "isDobRequested",
+				"type": "bool"
+			},
+			{
+				"internalType": "uint8",
+				"name": "comparisonType",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint32",
+				"name": "comparisonAge",
+				"type": "uint32"
+			}
+		],
+		"name": "getAadhar",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			},
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getAllCredentialsOfUser",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "enum DIDRegistry.CredentialType",
+						"name": "credentialType",
+						"type": "uint8"
+					},
+					{
+						"components": [
+							{
+								"internalType": "string",
+								"name": "name",
+								"type": "string"
+							},
+							{
+								"internalType": "string",
+								"name": "gender",
+								"type": "string"
+							},
+							{
+								"internalType": "euint32",
+								"name": "dob",
+								"type": "uint256"
+							},
+							{
+								"internalType": "string",
+								"name": "signUrl",
+								"type": "string"
+							}
+						],
+						"internalType": "struct DIDRegistry.Aadhar",
+						"name": "aadhar",
+						"type": "tuple"
+					},
+					{
+						"components": [
+							{
+								"internalType": "uint256",
+								"name": "companyId",
+								"type": "uint256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "joiningDate",
+								"type": "uint256"
+							},
+							{
+								"internalType": "string",
+								"name": "designation",
+								"type": "string"
+							},
+							{
+								"internalType": "euint32",
+								"name": "salary",
+								"type": "uint256"
+							},
+							{
+								"internalType": "string",
+								"name": "signUrl",
+								"type": "string"
+							}
+						],
+						"internalType": "struct DIDRegistry.Job",
+						"name": "job",
+						"type": "tuple"
+					}
+				],
+				"internalType": "struct DIDRegistry.Credential[]",
+				"name": "",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getCurrentYear",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "companyId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bool",
+				"name": "isSalaryRequested",
+				"type": "bool"
+			},
+			{
+				"internalType": "uint8",
+				"name": "comparisonType",
+				"type": "uint8"
+			},
+			{
+				"internalType": "euint32",
+				"name": "comparisonSalary",
+				"type": "uint256"
+			}
+		],
+		"name": "getJob",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			},
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			},
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "_year",
+				"type": "uint256"
+			}
+		],
+		"name": "setCurrentYear",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
+]
