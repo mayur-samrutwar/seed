@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button"
-import { HomeIcon, FileCheckIcon, ShieldCheckIcon, ClipboardCheckIcon, UserIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
+import { HomeIcon, FileCheckIcon, ShieldCheckIcon, ClipboardCheckIcon, UserIcon, ChevronLeftIcon, ChevronRightIcon, MailOpen, Mail } from "lucide-react"
 
 export default function Sidebar({ isCollapsed, setIsCollapsed, activePage, setActivePage, isSigned }) {
   const menuItems = [
@@ -7,6 +7,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, activePage, setAc
     { icon: FileCheckIcon, label: "Issue Credential" },
     { icon: ShieldCheckIcon, label: "Verify Credential" },
     { icon: ClipboardCheckIcon, label: "Approval Request" },
+    { icon: Mail, label: "Messages" },
     ...(isSigned ? [{ icon: UserIcon, label: "Profile" }] : []),
   ]
 
