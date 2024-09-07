@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { EyeIcon, EyeOffIcon } from 'lucide-react';
+import { useReadContract } from 'wagmi';
+import { Button } from "@/components/ui/button";
+import abi from '@/contracts/abi/helloworld.json';
 
 const mockData = [
   {
@@ -25,9 +28,28 @@ export default function HomeContent() {
     setter(prev => !prev);
   };
 
+  const { data, isError, isLoading, error, refetch } = useReadContract({
+    address: process.env.NEXT_PUBLIC_HELLO_WORLD_CONTRACT_ADDRESS,
+    abi: abi,
+    functionName: 'getMessage',
+  });
+
+  const handleFetchMessage = async () => {
+    await refetch();
+    console.log(error)
+  };
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-semibold mb-6 text-gray-800">Welcome back, Mayur</h1>
+      <Button onClick={handleFetchMessage} className="mb-4 bg-blue-500 text-white hover:bg-blue-600">
+        Fetch Message
+      </Button>
+      
+      {isLoading && <p>Loading...</p>}
+      {isError && <p> </p>}
+      {data && <p className="mb-4 text-gray-700">Message from contract: {data}</p>}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {mockData.map((card, index) => (
           <div key={index} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
