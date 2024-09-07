@@ -27,6 +27,7 @@ export default function MyApp({ Component, pageProps }) {
       <WagmiProvider config={config}>
         <AppKitProvider initialState={initialState}>
             <Component {...pageProps} />
+            <Toaster />
         </AppKitProvider>
       </WagmiProvider>
     </>
