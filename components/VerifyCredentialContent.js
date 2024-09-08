@@ -102,7 +102,8 @@ export default function VerifyCredentialContent() {
         const message = {
           type: 'approval_request',
           company: companyName,
-          data: selectedCredential === 'aadhar' ? JSON.stringify(aadharDetails) : JSON.stringify(employerDetails)
+          data: selectedCredential === 'aadhar' ? JSON.stringify(aadharDetails) : JSON.stringify(employerDetails),
+          dataType: selectedCredential === 'aadhar' ? 'aadhar' : 'job'
         };
         await conversation.send(JSON.stringify(message));
         console.log("Verification request sent", message);
