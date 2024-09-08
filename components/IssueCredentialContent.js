@@ -265,8 +265,8 @@ export default function IssueCredentialContent() {
   };
 
   return (
-    <>
-      <h1 className="text-3xl font-bold mb-8 text-gray-900 text-center">Issue New Credential</h1>
+    <div className="px-4 py-8">
+      <h1 className="text-3xl font-semibold mb-6 text-gray-900 text-center">Issue New Credential</h1>
       
       <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm max-w-2xl mx-auto">
         <div className="flex justify-between mb-8 relative">
@@ -370,6 +370,6 @@ export default function IssueCredentialContent() {
           </DialogContent>
         </Dialog>
       </div>
-    </>
+    </div>
   )
 }
