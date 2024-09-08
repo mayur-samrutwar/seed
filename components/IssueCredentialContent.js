@@ -6,6 +6,9 @@ import { SignProtocolClient, SpMode, OffChainSignType } from "@ethsign/sp-sdk"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useWriteContract, useSwitchChain, useChainId } from 'wagmi'
+import { mainnet } from 'wagmi/chains'
+import abi from '@/contracts/abi/did.json'
 
 export default function IssueCredentialContent() {
   const { toast } = useToast()
@@ -17,9 +20,17 @@ export default function IssueCredentialContent() {
   const [post, setPost] = useState("")
   const [salary, setSalary] = useState("")
   const [doj, setDoj] = useState("")
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isProcessingDialogOpen, setIsProcessingDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
+  const [transactionResult, setTransactionResult] = useState(null)
+  const [isMainnetSwitchDialogOpen, setIsMainnetSwitchDialogOpen] = useState(false)
+  const [isFhenixSwitchDialogOpen, setIsFhenixSwitchDialogOpen] = useState(false)
+  const [attestationId, setAttestationId] = useState(null)
+
+  const { writeContract, isLoading: isContractWriteLoading, isSuccess, isError } = useWriteContract()
+  const { switchChain } = useSwitchChain()
+  const chainId = useChainId()
 
   const formatDob = (dob) => {
     const date = new Date(dob);
@@ -29,33 +40,78 @@ export default function IssueCredentialContent() {
     return `${day}${month}${year}`;
   };
 
-  const handleCreateAttestation = async () => {
+  const createAttestation = async () => {
+    setIsProcessingDialogOpen(true)
     setIsLoading(true)
     try {
       const client = new SignProtocolClient(SpMode.OffChain, {
         signType: OffChainSignType.EvmEip712
       });
 
-      const aadharSchemaId = 'SPS_JkbwYNcmsJVgICFWJipMV';
-      const jobSchemaId = ''
-
-      const res = await client.createAttestation({
-        schemaId: credentialType === 'aadhar' ? aadharSchemaId : jobSchemaId,
-        data: credentialType === 'aadhar' 
-          ? { name: name, gender: gender }
-          : { post, salary },
-        recipients: [walletAddress],
-        indexingValue: '4'
-      });
-
-      setCurrentStep(3)
-      toast({
-        title: "Success!",
-        description: "Credential has been issued successfully.",
-      })
-      resetForm()
+      if (credentialType === 'aadhar') {
+        const aadharSchemaId = 'SPS_JkbwYNcmsJVgICFWJipMV';
+        const id = await client.createAttestation({
+          schemaId: aadharSchemaId,
+          data: { name: name, gender: gender },
+          recipients: [walletAddress],
+          indexingValue: '4'
+        });
+        setAttestationId(id);
+      } else {
+        const jobSchemaId = 'SPS_pJ2DeXAr033pnItPEQwHH';
+        const oneYearFromNow = new Date();
+        oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+        const validUntil = Math.floor(oneYearFromNow.getTime() / 1000);
+        const id = await client.createAttestation({
+          schemaId: jobSchemaId,
+          data: { companyId: 1, doj: formatDob(doj), designation: post },
+          recipients: [walletAddress],
+          indexingValue: '4',
+          validUntil: validUntil
+        });
+        setAttestationId(id);
+      }
+      setCurrentStep(4);
     } catch (error) {
       console.error('Error creating attestation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create attestation. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+      setIsProcessingDialogOpen(false)
+    }
+  };
+
+  const issueCredential = async () => {
+    setIsProcessingDialogOpen(true)
+    setIsLoading(true)
+    try {
+      if (chainId !== 8008135) {
+        setIsFhenixSwitchDialogOpen(true)
+        return
+      }
+      let result;
+      if (credentialType === 'aadhar') {
+        result = await writeContract({
+          address: process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS,
+          abi: abi,
+          functionName: 'addAadharCredential',
+          args: [walletAddress, name, gender, formatDob(dob), attestationId],
+        });
+      } else {
+        result = await writeContract({
+          address: process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS,
+          abi: abi,
+          functionName: 'addJobCredential',
+          args: [walletAddress, 1, formatDob(doj), post, salary, attestationId],
+        });
+      }
+      setTransactionResult(result)
+    } catch (error) {
+      console.error('Error issuing credential:', error);
       toast({
         title: "Error",
         description: "Failed to issue credential. Please try again.",
@@ -75,63 +131,113 @@ export default function IssueCredentialContent() {
     setSalary("")
     setDoj("")
     setCurrentStep(1)
-    setIsDialogOpen(false)
+    setTransactionResult(null)
+    setIsProcessingDialogOpen(false)
+    setIsMainnetSwitchDialogOpen(false)
+    setIsFhenixSwitchDialogOpen(false)
+    setAttestationId(null)
   }
 
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
         return (
-          <div className="flex flex-col space-y-4">
-            <Input type="text" placeholder="Wallet Address" value={walletAddress} onChange={(e) => setWalletAddress(e.target.value)} />
-            {credentialType === 'aadhar' ? (
-              <>
-                <Input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-                <Select value={gender} onValueChange={(value) => setGender(value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select gender" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Male">Male</SelectItem>
-                    <SelectItem value="Female">Female</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} />
-              </>
-            ) : (
-              <>
-                <Input type="text" placeholder="Designation" value={post} onChange={(e) => setPost(e.target.value)} />
-                <Input type="number" placeholder="Salary" value={salary} onChange={(e) => setSalary(e.target.value)} />
-                <Input type="date" value={doj} onChange={(e) => setDoj(e.target.value)} />
-              </>
-            )}
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Credential Type</label>
+              <Select value={credentialType} onValueChange={(value) => setCredentialType(value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select credential type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="aadhar">Aadhar Card</SelectItem>
+                  <SelectItem value="job">Job Details</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Wallet Address</label>
+              <Input type="text" placeholder="Enter wallet address" value={walletAddress} onChange={(e) => setWalletAddress(e.target.value)} className="w-full" />
+            </div>
           </div>
         );
       case 2:
         return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Confirm Details</h3>
-            <p><span className="font-semibold">Wallet Address:</span>{walletAddress}</p>
+          <div className="space-y-6">
             {credentialType === 'aadhar' ? (
               <>
-                <p><span className="font-semibold">Name:</span> <span className="text-gray-700">{name}</span></p>
-                <p><span className="font-semibold">Gender:</span> <span className="text-gray-700">{gender}</span></p>
-                <p><span className="font-semibold">Date of Birth:</span> <span className="text-gray-700">{dob}</span></p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <Input type="text" placeholder="Enter full name" value={name} onChange={(e) => setName(e.target.value)} className="w-full" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                  <Select value={gender} onValueChange={(value) => setGender(value)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Male">Male</SelectItem>
+                      <SelectItem value="Female">Female</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                  <Input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className="w-full" />
+                </div>
               </>
             ) : (
               <>
-                <p><span className="font-semibold">Designation:</span> <span className="text-gray-700">{post}</span></p>
-                <p><span className="font-semibold">Salary:</span> <span className="text-gray-700">{salary}</span></p>
-                <p><span className="font-semibold">Date of Joining:</span> <span className="text-gray-700">{doj}</span></p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Designation</label>
+                  <Input type="text" placeholder="Enter designation" value={post} onChange={(e) => setPost(e.target.value)} className="w-full" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Salary</label>
+                  <Input type="number" placeholder="Enter salary" value={salary} onChange={(e) => setSalary(e.target.value)} className="w-full" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date of Joining</label>
+                  <Input type="date" value={doj} onChange={(e) => setDoj(e.target.value)} className="w-full" />
+                </div>
               </>
             )}
           </div>
         );
       case 3:
         return (
-          <div className="text-center">
-            <h3 className="text-lg font-semibold mb-2">Credential Issued Successfully</h3>
-            <p>Your credential has been issued and sent to the provided wallet address.</p>
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold mb-4">Confirm Details</h3>
+            <p><span className="font-medium">Credential Type:</span> {credentialType === 'aadhar' ? 'Aadhar Card' : 'Job Details'}</p>
+            <p><span className="font-medium">Wallet Address:</span> {walletAddress}</p>
+            {credentialType === 'aadhar' ? (
+              <>
+                <p><span className="font-medium">Name:</span> {name}</p>
+                <p><span className="font-medium">Gender:</span> {gender}</p>
+                <p><span className="font-medium">Date of Birth:</span> {dob}</p>
+              </>
+            ) : (
+              <>
+                <p><span className="font-medium">Designation:</span> {post}</p>
+                <p><span className="font-medium">Salary:</span> {salary}</p>
+                <p><span className="font-medium">Date of Joining:</span> {doj}</p>
+              </>
+            )}
+          </div>
+        );
+      case 4:
+        return (
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold mb-4">Issue Credential</h3>
+            <p>Attestation has been created. Click the button below to issue the credential on Fhenix Helium.</p>
+            <Button
+              onClick={issueCredential}
+              disabled={isLoading || isContractWriteLoading}
+              className="w-full bg-black hover:bg-gray-800 text-white"
+            >
+              Issue Credential
+            </Button>
           </div>
         );
       default:
@@ -139,59 +245,82 @@ export default function IssueCredentialContent() {
     }
   };
 
+  const handleNext = () => {
+    if (currentStep < 3) {
+      setCurrentStep((prev) => prev + 1);
+    } else if (currentStep === 3) {
+      if (chainId !== mainnet.id) {
+        setIsMainnetSwitchDialogOpen(true);
+      } else {
+        createAttestation();
+      }
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep((prev) => prev - 1);
+    }
+  };
+
   return (
-    <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm max-w-md mx-auto">
-      <h1 className="text-3xl font-bold mb-6 text-gray-900">Issue New Credential</h1>
+    <>
+      <h1 className="text-3xl font-bold mb-8 text-gray-900">Issue New Credential</h1>
       
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Credential Type</label>
-          <Select value={credentialType} onValueChange={(value) => setCredentialType(value)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select credential type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="aadhar">Aadhar Card</SelectItem>
-              <SelectItem value="job">Job Details</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm max-w-2xl mx-auto">
+        <div className="flex justify-between mb-8 relative">
+          {[1, 2, 3, 4].map((step) => (
+            <div key={step} className={`flex flex-col items-center ${currentStep >= step ? 'text-gray-600' : 'text-gray-400'}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${currentStep >= step ? 'border-gray-600 bg-gray-100' : 'border-gray-300'}`}>
+                {currentStep > step ? '✓' : step}
+              </div>
+              <span className="mt-2 text-xs text-black">
+                {step === 1 ? 'Select' : step === 2 ? 'Enter Details' : step === 3 ? 'Review' : 'Issue'}
+              </span>
+            </div>
+          ))}
+          <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-300 -z-10"></div>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full mt-6 bg-black text-white hover:bg-gray-800">Issue Credential</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] p-6">
-            <div className="flex justify-between mb-6">
-              {[1, 2, 3].map((step) => (
-                <div
-                  key={step}
-                  className={`w-1/3 text-center ${
-                    currentStep === step ? 'font-bold' : 'text-gray-400'
-                  }`}
-                >
-                  Step {step}
+        {renderStepContent()}
+
+        <div className="flex justify-between mt-8">
+          {currentStep > 1 && (
+            <Button onClick={handleBack} className="bg-gray-300 hover:bg-gray-400 text-black">
+              Back
+            </Button>
+          )}
+          {currentStep < 4 && (
+            <Button
+              onClick={handleNext}
+              disabled={isLoading || isContractWriteLoading}
+              className="ml-auto bg-black hover:bg-gray-800 text-white"
+            >
+              {currentStep < 3 ? 'Next' : 'Create Attestation'}
+            </Button>
+          )}
+        </div>
+
+        <Dialog open={isProcessingDialogOpen} onOpenChange={setIsProcessingDialogOpen}>
+          <DialogContent className="sm:max-w-[400px] p-6 bg-white rounded-lg shadow-lg">
+            <div className="text-center space-y-4">
+              <h3 className="text-xl font-semibold mb-2">Processing</h3>
+              {isLoading || isContractWriteLoading ? (
+                <div className="flex justify-center items-center">
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <span className="ml-2">Processing transaction...</span>
                 </div>
-              ))}
-            </div>
-            <div className="py-6">
-              {renderStepContent()}
-            </div>
-            <div className="flex justify-between mt-6">
-              {currentStep < 3 && (
+              ) : isSuccess ? (
+                <div>
+                  <p className="text-green-600 font-medium">Transaction successful!</p>
+                </div>
+              ) : isError ? (
+                <p className="text-red-600 font-medium">Transaction failed. Please try again.</p>
+              ) : null}
+              {!isLoading && !isContractWriteLoading && (
                 <Button
-                  onClick={() => currentStep === 2 ? handleCreateAttestation() : setCurrentStep((prev) => prev + 1)}
-                  disabled={isLoading}
-                  className="w-full"
-                >
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {currentStep === 2 ? (isLoading ? 'Issuing...' : 'Issue Credential') : 'Next'}
-                </Button>
-              )}
-              {currentStep === 3 && (
-                <Button
-                  onClick={() => setIsDialogOpen(false)}
-                  className="w-full"
+                  onClick={resetForm}
+                  className="w-full bg-black hover:bg-gray-800 text-white mt-4"
                 >
                   Close
                 </Button>
@@ -199,7 +328,41 @@ export default function IssueCredentialContent() {
             </div>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={isMainnetSwitchDialogOpen} onOpenChange={setIsMainnetSwitchDialogOpen}>
+          <DialogContent className="sm:max-w-[400px] p-6 bg-white rounded-lg shadow-lg">
+            <h3 className="text-xl font-semibold mb-4">Switch to Mainnet</h3>
+            <p className="mb-4">Please switch to Mainnet to create the attestation.</p>
+            <Button 
+              onClick={() => {
+                switchChain({ chainId: mainnet.id })
+                setIsMainnetSwitchDialogOpen(false)
+                createAttestation()
+              }} 
+              className="w-full bg-black hover:bg-gray-800 text-white"
+            >
+              Switch to Mainnet
+            </Button>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isFhenixSwitchDialogOpen} onOpenChange={setIsFhenixSwitchDialogOpen}>
+          <DialogContent className="sm:max-w-[400px] p-6 bg-white rounded-lg shadow-lg">
+            <h3 className="text-xl font-semibold mb-4">Switch to Fhenix Helium</h3>
+            <p className="mb-4">Please switch to Fhenix Helium to issue the credential.</p>
+            <Button 
+              onClick={async () => {
+                await switchChain({ chainId: 8008135 })
+                setIsFhenixSwitchDialogOpen(false)
+                issueCredential()
+              }} 
+              className="w-full bg-black hover:bg-gray-800 text-white"
+            >
+              Switch to Fhenix Helium
+            </Button>
+          </DialogContent>
+        </Dialog>
       </div>
-    </div>
+    </>
   )
 }

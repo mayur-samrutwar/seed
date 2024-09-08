@@ -30,6 +30,8 @@ contract DIDRegistry {
         Job job;
     }
 
+    /// @notice DID registry to map all the credentials to user address
+
     mapping(address => Credential[]) private userCredentials;
 
     /// @notice Initializes the contract, setting the deployer as the owner and current year to 2024
@@ -67,11 +69,12 @@ contract DIDRegistry {
         @param _name The name on the Aadhar
         @param _gender The  der on the Aadhar
         @param _dob The date of birth as a uint32
+        @dev _dob is stored in encrypted form
         @param _signUrl The Sign protocol's attestation URL
-        @dev Only the owner can call this function. The DOB is encrypted using FHE.
+        @dev Only the owner can call this function. The DOB is encrypted using FHE. //REMOVING onlyOwner
     */
     
-    function addAadharCredential(address _address, string memory _name, string memory _gender, uint32 _dob, string memory _signUrl) external onlyOwner {
+    function addAadharCredential(address _address, string memory _name, string memory _gender, uint32 _dob, string memory _signUrl) external {
         Credential memory newCredential;
         newCredential.credentialType = CredentialType.Aadhar;
         newCredential.aadhar = Aadhar(_name, _gender, FHE.asEuint32(_dob), _signUrl);
@@ -86,9 +89,9 @@ contract DIDRegistry {
         @param _designation The job designation
         @param _salary The salary, which will be encrypted
         @param _signUrl The Sign protocol's attestation URL
-        @dev Only the owner can call this function. The salary is encrypted using FHE.
+        @dev Only the owner can call this function. The salary is encrypted using FHE. //REMOVING onlyOwner
     */
-    function addJobCredential(address _address, uint256 _companyId, uint256 _joiningDate, string memory _designation, uint32 _salary, string memory _signUrl) external onlyOwner {
+    function addJobCredential(address _address, uint256 _companyId, uint256 _joiningDate, string memory _designation, uint32 _salary, string memory _signUrl) external {
         Credential memory newCredential;
         newCredential.credentialType = CredentialType.Job;
         newCredential.job = Job(_companyId, _joiningDate, _designation, FHE.asEuint32(_salary), _signUrl);

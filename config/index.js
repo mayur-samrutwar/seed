@@ -1,7 +1,6 @@
-
 import { defaultWagmiConfig } from '@web3modal/wagmi/react/config'
 import { cookieStorage, createStorage } from 'wagmi'
-import { arbitrumSepolia, mainnet, polygonAmoy, sepolia } from 'wagmi/chains'
+import { mainnet, polygonAmoy, sepolia } from 'wagmi/chains'
 
 // Your WalletConnect Cloud project ID
 export const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
@@ -10,13 +9,32 @@ export const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
 const metadata = {
   name: 'seeddid',
   description: 'seed did',
-  url: 'https://web3modal.com', // origin must match your domain & subdomain
+  url: 'https://web3modal.com',
   icons: ['https://avatars.githubusercontent.com/u/37784886']
 }
 
+// Define Fhenix Helium chain
+const fhenixHelium = {
+  id: 8008135,
+  name: 'Fhenix Helium',
+  network: 'fhenix-helium',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Fhenix Ether',
+    symbol: 'tETH',
+  },
+  rpcUrls: {
+    public: { http: ['https://api.helium.fhenix.zone/'] },
+    default: { http: ['https://api.helium.fhenix.zone/'] },
+  },
+  blockExplorers: {
+    default: { name: 'Explorer', url: 'https://explorer.helium.fhenix.zone' },
+  },
+  testnet: true,
+} 
 
 // Create wagmiConfig
-const chains = [polygonAmoy, sepolia, mainnet]
+const chains = [fhenixHelium, polygonAmoy, sepolia, mainnet]
 export const config = defaultWagmiConfig({
     chains,
     projectId,
