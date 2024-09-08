@@ -1,38 +1,93 @@
 import { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { useAccount } from 'wagmi';
-import axios from 'axios';
+import { useAccount, useWalletClient } from 'wagmi';
+import { Client } from '@xmtp/xmtp-js';
+import { ExternalLink } from 'lucide-react';
+import { IndexService } from "@ethsign/sp-sdk";
 
 export default function DataContent() {
-  const [approvedData, setApprovedData] = useState(null);
+  const [approvedData, setApprovedData] = useState({});
   const { address } = useAccount();
+  const { data: walletClient } = useWalletClient();
+
+  const indexService = new IndexService("mainnet");
 
   useEffect(() => {
     const fetchApprovedData = async () => {
+      if (!walletClient || !address) return;
+
       try {
-        const response = await axios.get(`/api/data/getapproved?address=${address}`);
-        setApprovedData(response.data);
+        const xmtp = await Client.create(walletClient, { env: 'production' });
+        const conversations = await xmtp.conversations.list();
+        const newApprovedData = {};
+
+        for (const conversation of conversations) {
+          const messages = await conversation.messages();
+          for (const message of messages) {
+            try {
+              const content = JSON.parse(message.content);
+              if (content.type === 'request_response' && content.approved && content.data) {
+                const company = content.company || 'Unknown Company';
+                if (!newApprovedData[company]) {
+                  newApprovedData[company] = [];
+                }
+                newApprovedData[company].push({
+                  dataType: content.dataType || 'Unknown Type',
+                  data: content.data,
+                });
+              }
+            } catch (error) {
+              console.error('Error parsing message:', error);
+            }
+          }
+        }
+
+        setApprovedData(newApprovedData);
       } catch (error) {
         console.error('Error fetching approved data:', error);
       }
     };
+
     fetchApprovedData();
-  }, [address]);
+  }, [walletClient, address]);
+
+  const renderCredentialDetails = (credential) => {
+    if (!credential || !credential.data) return null;
+    return Object.entries(credential.data).map(([field, value]) => (
+      field !== 'signUrl' && (
+        <p key={field}><span className="font-semibold">{field.charAt(0).toUpperCase() + field.slice(1)}:</span> {value?.toString() || 'N/A'}</p>
+      )
+    ));
+  };
+
+  const capitalizeFirstLetter = (string) => {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+  };
 
   return (
-    <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
-      <h1 className="text-3xl font-bold mb-6 text-gray-900">Approved Data</h1>
-      {approvedData ? (
-        <div className="space-y-4">
-          {Object.entries(approvedData).map(([key, value]) => (
-            <div key={key} className="border-b border-gray-200 pb-4">
-              <h2 className="text-xl font-semibold text-gray-800">{key}</h2>
-              <p className="text-gray-600">{value}</p>
-            </div>
-          ))}
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-semibold mb-6 text-gray-800 text-center">Approved Data Requests</h1>
+      {Object.keys(approvedData).length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {Object.entries(approvedData).flatMap(([company, credentials]) =>
+            credentials.map((credential, index) => (
+              <div key={`${company}-${index}`} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 className="text-lg font-medium mb-4 pb-2 border-b border-gray-200 text-gray-700">
+                  {company} - {capitalizeFirstLetter(credential.dataType || 'Unknown Type')}
+                </h3>
+                <div className="space-y-3">
+                  {renderCredentialDetails(credential)}
+                  {credential.data?.signUrl && (
+                    <a href={`https://scan.sign.global/attestation/${credential.data.signUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-2 text-blue-500 hover:text-blue-600 mt-4">
+                      Show Attestation <ExternalLink className="ml-2 h-4 w-4" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       ) : (
-        <p className="text-gray-600">No approved data requests found.</p>
+        <p className="text-center text-gray-600">No approved data requests found.</p>
       )}
     </div>
   );
