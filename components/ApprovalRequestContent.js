@@ -28,38 +28,48 @@ export default function ApprovalRequestContent() {
   }, [walletClient, xmtp]);
 
   const loadApprovalRequests = async (client) => {
-    const conversations = await client.conversations.list();
-    const requests = [];
-    for (const conversation of conversations) {
-      const messages = await conversation.messages();
-      let lastRequest = null;
-      let hasResponse = false;
-
-      for (const msg of messages) {
-        try {
+    try {
+      const conversations = await client.conversations.list();
+      const requests = [];
+      for (const conversation of conversations) {
+        const messages = await conversation.messages();
+        const approvalRequestMessages = messages.filter(msg => {
+          try {
+            const content = JSON.parse(msg.content);
+            return content.type === 'approval_request' && msg.senderAddress !== address;
+          } catch (error) {
+            return false;
+          }
+        });
+        
+        for (const msg of approvalRequestMessages) {
           const content = JSON.parse(msg.content);
-          if (content.type === 'approval_request' && msg.senderAddress !== address) {
-            lastRequest = {
+          const hasReply = messages.some(replyMsg => {
+            try {
+              const replyContent = JSON.parse(replyMsg.content);
+              return replyContent.type === 'request_response' && replyContent.requestId === msg.id;
+            } catch (error) {
+              return false;
+            }
+          });
+          
+          if (!hasReply) {
+            requests.push({
               id: msg.id,
               company: content.company,
               data: content.data,
               peerAddress: msg.senderAddress,
               timestamp: msg.sent
-            };
-          } else if (content.type === 'request_response' && lastRequest) {
-            hasResponse = true;
-            break;
+            });
           }
-        } catch (error) {
-          // Ignore non-JSON messages
         }
       }
-
-      if (lastRequest && !hasResponse) {
-        requests.push(lastRequest);
-      }
+      setApprovalRequests(requests);
+      console.log('Loaded approval requests:', requests);
+    } catch (error) {
+      console.error('Error loading approval requests:', error);
+      setError('Failed to load approval requests. Please try again.');
     }
-    setApprovalRequests(requests);
   };
 
   const handleApproval = async (requestId, isApproved) => {
@@ -104,7 +114,7 @@ export default function ApprovalRequestContent() {
   return (
     <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
-        <CardTitle className="text-2xl font-bold">Approval Requests</CardTitle>
+        <CardTitle className="text-2xl font-bold">Pending Approval Requests</CardTitle>
       </CardHeader>
       <CardContent>
         {error && (
