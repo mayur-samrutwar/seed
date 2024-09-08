@@ -157,7 +157,7 @@ export default function IssueCredentialContent() {
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Wallet Address</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">User Address</label>
               <Input type="text" placeholder="Enter wallet address" value={walletAddress} onChange={(e) => setWalletAddress(e.target.value)} className="w-full" />
             </div>
           </div>
