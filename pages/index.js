@@ -6,7 +6,6 @@ import HomeContent from '@/components/HomeContent'
 import IssueCredentialContent from '@/components/IssueCredentialContent'
 import VerifyCredentialContent from '@/components/VerifyCredentialContent'
 import ApprovalRequestContent from '@/components/ApprovalRequestContent'
-import ProfileContent from '@/components/ProfileContent'
 import DataContent from "@/components/DataContent"
 
 export default function AirbnbStyleDashboard() {
@@ -72,8 +71,6 @@ export default function AirbnbStyleDashboard() {
         return <VerifyCredentialContent />
       case "Approval Request":
         return <ApprovalRequestContent />
-      case "Profile":
-        return <ProfileContent />
       case "Messages":
         return <DataContent />
       default:

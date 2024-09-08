@@ -8,7 +8,6 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, activePage, setAc
     { icon: ShieldCheckIcon, label: "Verify Credential" },
     { icon: ClipboardCheckIcon, label: "Approval Request" },
     { icon: Mail, label: "Messages" },
-    ...(isSigned ? [{ icon: UserIcon, label: "Profile" }] : []),
   ]
 
   return (

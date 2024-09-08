@@ -129,11 +129,11 @@ export default function VerifyCredentialContent() {
       case 2:
         return (
           <>
-            <p className="text-gray-600 mb-4">Enter your address to proceed.</p>
+            <p className="text-gray-600 mb-4">Enter user's address.</p>
             <Input
               value={uaddress}
               onChange={handleAddressChange}
-              placeholder="Seed DID"
+              placeholder="0x3...h3d"
               className="mb-4"
             />
           </>
