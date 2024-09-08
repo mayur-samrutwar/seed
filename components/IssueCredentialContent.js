@@ -56,7 +56,7 @@ export default function IssueCredentialContent() {
           recipients: [walletAddress],
           indexingValue: '4'
         });
-        setAttestationId(id);
+        setAttestationId(id.attestationId);
       } else {
         const jobSchemaId = 'SPS_pJ2DeXAr033pnItPEQwHH';
         const oneYearFromNow = new Date();
@@ -69,8 +69,9 @@ export default function IssueCredentialContent() {
           indexingValue: '4',
           validUntil: validUntil
         });
-        setAttestationId(id);
+        setAttestationId(id.attestationId);
       }
+      console.log(attestationId)
       setCurrentStep(4);
     } catch (error) {
       console.error('Error creating attestation:', error);
@@ -265,14 +266,14 @@ export default function IssueCredentialContent() {
 
   return (
     <>
-      <h1 className="text-3xl font-bold mb-8 text-gray-900">Issue New Credential</h1>
+      <h1 className="text-3xl font-bold mb-8 text-gray-900 text-center">Issue New Credential</h1>
       
       <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm max-w-2xl mx-auto">
         <div className="flex justify-between mb-8 relative">
           {[1, 2, 3, 4].map((step) => (
             <div key={step} className={`flex flex-col items-center ${currentStep >= step ? 'text-gray-600' : 'text-gray-400'}`}>
               <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 ${currentStep >= step ? 'border-gray-600 bg-gray-100' : 'border-gray-300'}`}>
-                {currentStep > step ? '✓' : step}
+                {currentStep > step ? '✓' : step} 
               </div>
               <span className="mt-2 text-xs text-black">
                 {step === 1 ? 'Select' : step === 2 ? 'Enter Details' : step === 3 ? 'Review' : 'Issue'}
@@ -304,18 +305,24 @@ export default function IssueCredentialContent() {
         <Dialog open={isProcessingDialogOpen} onOpenChange={setIsProcessingDialogOpen}>
           <DialogContent className="sm:max-w-[400px] p-6 bg-white rounded-lg shadow-lg">
             <div className="text-center space-y-4">
-              <h3 className="text-xl font-semibold mb-2">Processing</h3>
               {isLoading || isContractWriteLoading ? (
-                <div className="flex justify-center items-center">
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                  <span className="ml-2">Processing transaction...</span>
-                </div>
+                <>
+                  <h3 className="text-xl font-semibold mb-2">Processing</h3>
+                  <div className="flex justify-center items-center">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <span className="ml-2">Processing transaction...</span>
+                  </div>
+                </>
               ) : isSuccess ? (
-                <div>
-                  <p className="text-green-600 font-medium">Transaction successful!</p>
-                </div>
+                <>
+                  <h3 className="text-xl font-semibold mb-2">Success</h3>
+                  <p className="text-green-600 font-medium">Credential issued successfully!</p>
+                </>
               ) : isError ? (
-                <p className="text-red-600 font-medium">Transaction failed. Please try again.</p>
+                <>
+                  <h3 className="text-xl font-semibold mb-2">Error</h3>
+                  <p className="text-red-600 font-medium">Transaction failed. Please try again.</p>
+                </>
               ) : null}
               {!isLoading && !isContractWriteLoading && (
                 <Button
