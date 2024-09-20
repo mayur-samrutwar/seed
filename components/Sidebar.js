@@ -38,7 +38,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, activePage, setAc
                   onClick={() => setActivePage(item.label)}
                 >
                   <item.icon className={`h-5 w-5 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} />
-                  {!isCollapsed && <span className="font-medium">{item.label}</span>}
+                  {!isCollapsed && <span className="font-normal">{item.label}</span>}
                 </Button>
               </li>
             ))}

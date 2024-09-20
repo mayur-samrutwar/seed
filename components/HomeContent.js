@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAccount, useReadContract } from 'wagmi';
 import { Button } from "@/components/ui/button";

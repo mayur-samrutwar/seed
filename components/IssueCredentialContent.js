@@ -1,29 +1,54 @@
-import { useState, useEffect } from "react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
-import { Loader2, Plus, X } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
-import { useWriteContract, useSwitchChain, useChainId } from 'wagmi'
-import abi from '@/contracts/abi/did.json'
+import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Loader2, Plus, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useWriteContract, useSwitchChain, useChainId } from 'wagmi';
+import abi from '@/contracts/abi/did.json';
+import { JsonRpcProvider } from "ethers";
+import { FhenixClient } from "fhenixjs";
 
 export default function IssueCredentialContent() {
-  const { toast } = useToast()
-  const [credentialType, setCredentialType] = useState("")
-  const [walletAddress, setWalletAddress] = useState("")
-  const [isProcessingDialogOpen, setIsProcessingDialogOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [currentStep, setCurrentStep] = useState(1)
-  const [transactionResult, setTransactionResult] = useState(null)
-  const [newSchemaName, setNewSchemaName] = useState("")
-  const [newSchemaFields, setNewSchemaFields] = useState([{ name: "", type: "string", value: "", isEncrypted: false }])
-  const [existingSchemas, setExistingSchemas] = useState([])
-  const [customSchemaValues, setCustomSchemaValues] = useState({})
+  const [fhenixClient, setFhenixClient] = useState(null);
 
-  const { writeContract, isLoading: isContractWriteLoading, isSuccess, isError } = useWriteContract()
-  const { switchChain } = useSwitchChain()
-  const chainId = useChainId()
+  useEffect(() => {
+    const initializeFhenixClient = async () => {
+      try {
+        const provider = new JsonRpcProvider('https://api.helium.fhenix.zone');
+        const client = new FhenixClient({ provider });
+        await client.init(); // Ensure the client is properly initialized
+        return client;
+      } catch (error) {
+        console.error("Failed to initialize Fhenix client:", error);
+        throw error;
+      }
+    };
+  }, []);
+  const { toast } = useToast();
+  const [credentialType, setCredentialType] = useState("");
+  const [walletAddress, setWalletAddress] = useState("");
+  const [isProcessingDialogOpen, setIsProcessingDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [newSchemaName, setNewSchemaName] = useState("");
+  const [newSchemaFields, setNewSchemaFields] = useState([{ name: "", type: "string", value: "", isEncrypted: false }]);
+  const [existingSchemas, setExistingSchemas] = useState([]);
+  const [customSchemaValues, setCustomSchemaValues] = useState({});
+  const [provider, setProvider] = useState(null);
+
+  const { writeContract, isLoading: isContractWriteLoading, isSuccess, isError } = useWriteContract({
+    address: process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS,
+    abi: abi,
+    functionName: "addCredential",
+  });
+  const { switchChain } = useSwitchChain();
+  const chainId = useChainId();
+
+  useEffect(() => {
+    setProvider(new JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL));
+  }, []);
 
   useEffect(() => {
     const fetchSchemas = async () => {
@@ -44,8 +69,9 @@ export default function IssueCredentialContent() {
   }, []);
 
   const issueCredential = async () => {
-    setIsProcessingDialogOpen(true)
-    setIsLoading(true)
+    setIsProcessingDialogOpen(true);
+    setIsLoading(true);
+  
     try {
       if (credentialType === 'new') {
         // Save new schema to the database
@@ -59,60 +85,87 @@ export default function IssueCredentialContent() {
             fields: newSchemaFields,
           }),
         });
-
+  
         if (!response.ok) {
           throw new Error('Failed to add new schema');
         }
-
+  
         // After successfully adding the schema, update the existing schemas list
         setExistingSchemas([...existingSchemas, { name: newSchemaName, fields: newSchemaFields }]);
       }
-
-      // TODO: Add logic to issue the credential on the blockchain
-      console.log("Issuing credential:", credentialType === 'new' ? newSchemaName : credentialType, customSchemaValues);
-
+  
+      const fhenixClient = new FhenixClient({ provider });
+  
+      const publicDataKeys = [];
+      const publicDataValues = [];
+      const encryptedDataKeys = [];
+      const encryptedDataValues = [];
+  
+      const schemaFields = credentialType === 'new' ? newSchemaFields : existingSchemas.find(s => s.name === credentialType).fields;
+  
+      for (const field of schemaFields) {
+        if (field.isEncrypted) {
+          encryptedDataKeys.push(field.name);
+          const encryptedValue = await fhenixClient.encrypt_uint256(parseInt(field.value));
+          encryptedDataValues.push(encryptedValue);
+        } else {
+          publicDataKeys.push(field.name);
+          publicDataValues.push(parseInt(field.value));
+        }
+      }
+  
+      await writeContract({
+        args: [
+          credentialType === 'new' ? newSchemaName : credentialType,
+          publicDataKeys,
+          encryptedDataKeys,
+          publicDataValues,
+          encryptedDataValues,
+        ],
+      });
+  
       toast({
         title: "Success",
         description: "Credential issued successfully.",
         variant: "default",
-      })
+      });
     } catch (error) {
       console.error('Error issuing credential:', error);
       toast({
         title: "Error",
-        description: "Failed to issue credential. Please try again.",
+        description: `Failed to issue credential. Please try again. Error: ${error.message}`,
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   };
+  
 
   const resetForm = () => {
-    setWalletAddress("")
-    setCurrentStep(1)
-    setTransactionResult(null)
-    setIsProcessingDialogOpen(false)
-    setCustomSchemaValues({})
-    setNewSchemaName("")
-    setNewSchemaFields([{ name: "", type: "string", value: "", isEncrypted: false }])
-    setCredentialType("")
-  }
+    setWalletAddress("");
+    setCurrentStep(1);
+    setIsProcessingDialogOpen(false);
+    setCustomSchemaValues({});
+    setNewSchemaName("");
+    setNewSchemaFields([{ name: "", type: "string", value: "", isEncrypted: false }]);
+    setCredentialType("");
+  };
 
   const handleAddField = () => {
-    setNewSchemaFields([...newSchemaFields, { name: "", type: "string", value: "", isEncrypted: false }])
-  }
+    setNewSchemaFields([...newSchemaFields, { name: "", type: "string", value: "", isEncrypted: false }]);
+  };
 
   const handleRemoveField = (index) => {
-    const updatedFields = newSchemaFields.filter((_, i) => i !== index)
-    setNewSchemaFields(updatedFields)
-  }
+    const updatedFields = newSchemaFields.filter((_, i) => i !== index);
+    setNewSchemaFields(updatedFields);
+  };
 
   const handleFieldChange = (index, key, value) => {
-    const updatedFields = [...newSchemaFields]
-    updatedFields[index][key] = value
-    setNewSchemaFields(updatedFields)
-  }
+    const updatedFields = [...newSchemaFields];
+    updatedFields[index][key] = value;
+    setNewSchemaFields(updatedFields);
+  };
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -354,42 +407,43 @@ export default function IssueCredentialContent() {
             >
               Next
             </Button>
-          )}</div>
-
-          <Dialog open={isProcessingDialogOpen} onOpenChange={setIsProcessingDialogOpen}>
-            <DialogContent className="sm:max-w-[400px] p-6 bg-white rounded-lg shadow-lg">
-              <div className="text-center space-y-4">
-                {isLoading || isContractWriteLoading ? (
-                  <>
-                    <h3 className="text-xl font-semibold mb-2">Processing</h3>
-                    <div className="flex justify-center items-center">
-                      <Loader2 className="h-8 w-8 animate-spin" />
-                      <span className="ml-2">Processing transaction...</span>
-                    </div>
-                  </>
-                ) : isSuccess ? (
-                  <>
-                    <h3 className="text-xl font-semibold mb-2">Success</h3>
-                    <p className="text-green-600 font-medium">Credential issued successfully!</p>
-                  </>
-                ) : isError ? (
-                  <>
-                    <h3 className="text-xl font-semibold mb-2">Error</h3>
-                    <p className="text-red-600 font-medium">Transaction failed. Please try again.</p>
-                  </>
-                ) : null}
-                {!isLoading && !isContractWriteLoading && (
-                  <Button
-                    onClick={resetForm}
-                    className="w-full bg-black hover:bg-gray-800 text-white mt-4"
-                  >
-                    Close
-                  </Button>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
+          )}
         </div>
+
+        <Dialog open={isProcessingDialogOpen} onOpenChange={setIsProcessingDialogOpen}>
+          <DialogContent className="sm:max-w-[400px] p-6 bg-white rounded-lg shadow-lg">
+            <div className="text-center space-y-4">
+              {isLoading || isContractWriteLoading ? (
+                <>
+                  <h3 className="text-xl font-semibold mb-2">Processing</h3>
+                  <div className="flex justify-center items-center">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    <span className="ml-2">Processing transaction...</span>
+                  </div>
+                </>
+              ) : isSuccess ? (
+                <>
+                  <h3 className="text-xl font-semibold mb-2">Success</h3>
+                  <p className="text-green-600 font-medium">Credential issued successfully!</p>
+                </>
+              ) : isError ? (
+                <>
+                  <h3 className="text-xl font-semibold mb-2">Error</h3>
+                  <p className="text-red-600 font-medium">Transaction failed. Please try again.</p>
+                </>
+              ) : null}
+              {!isLoading && !isContractWriteLoading && (
+                <Button
+                  onClick={resetForm}
+                  className="w-full bg-black hover:bg-gray-800 text-white mt-4"
+                >
+                  Close
+                </Button>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
-    )
-  }
+    </div>
+  );
+}

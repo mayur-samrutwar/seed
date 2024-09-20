@@ -1,132 +1,114 @@
 [
 	{
-		"inputs": [],
-		"stateMutability": "nonpayable",
-		"type": "constructor"
-	},
-	{
 		"inputs": [
 			{
-				"internalType": "address",
-				"name": "_address",
-				"type": "address"
-			},
-			{
 				"internalType": "string",
-				"name": "_name",
+				"name": "credType",
 				"type": "string"
 			},
 			{
-				"internalType": "string",
-				"name": "_gender",
-				"type": "string"
+				"internalType": "string[]",
+				"name": "publicDataKeys",
+				"type": "string[]"
 			},
 			{
-				"internalType": "uint32",
-				"name": "_dob",
-				"type": "uint32"
+				"internalType": "string[]",
+				"name": "encryptedDataKeys",
+				"type": "string[]"
 			},
 			{
-				"internalType": "string",
-				"name": "_signUrl",
-				"type": "string"
+				"internalType": "int256[]",
+				"name": "publicDataValues",
+				"type": "int256[]"
+			},
+			{
+				"components": [
+					{
+						"internalType": "bytes",
+						"name": "data",
+						"type": "bytes"
+					}
+				],
+				"internalType": "struct inEuint256[]",
+				"name": "encryptedDataValues",
+				"type": "tuple[]"
 			}
 		],
-		"name": "addAadharCredential",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "_address",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "_companyId",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "_joiningDate",
-				"type": "uint256"
-			},
-			{
-				"internalType": "string",
-				"name": "_designation",
-				"type": "string"
-			},
-			{
-				"internalType": "uint32",
-				"name": "_salary",
-				"type": "uint32"
-			},
-			{
-				"internalType": "string",
-				"name": "_signUrl",
-				"type": "string"
-			}
-		],
-		"name": "addJobCredential",
+		"name": "addCredential",
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
 		"inputs": [],
-		"name": "currentYear",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
+		"name": "InvalidShortString",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "SignerNotMessageSender",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "SignerNotOwner",
+		"type": "error"
 	},
 	{
 		"inputs": [
 			{
-				"internalType": "bool",
-				"name": "isDobRequested",
-				"type": "bool"
-			},
-			{
-				"internalType": "uint8",
-				"name": "comparisonType",
-				"type": "uint8"
-			},
-			{
-				"internalType": "uint32",
-				"name": "comparisonAge",
-				"type": "uint32"
+				"internalType": "string",
+				"name": "str",
+				"type": "string"
 			}
 		],
-		"name": "getAadhar",
+		"name": "StringTooLong",
+		"type": "error"
+	},
+	{
+		"anonymous": false,
+		"inputs": [],
+		"name": "EIP712DomainChanged",
+		"type": "event"
+	},
+	{
+		"inputs": [],
+		"name": "eip712Domain",
 		"outputs": [
 			{
+				"internalType": "bytes1",
+				"name": "fields",
+				"type": "bytes1"
+			},
+			{
 				"internalType": "string",
-				"name": "",
+				"name": "name",
 				"type": "string"
 			},
 			{
 				"internalType": "string",
-				"name": "",
+				"name": "version",
 				"type": "string"
 			},
 			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
+				"internalType": "uint256",
+				"name": "chainId",
+				"type": "uint256"
 			},
 			{
-				"internalType": "string",
-				"name": "",
-				"type": "string"
+				"internalType": "address",
+				"name": "verifyingContract",
+				"type": "address"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "salt",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "uint256[]",
+				"name": "extensions",
+				"type": "uint256[]"
 			}
 		],
 		"stateMutability": "view",
@@ -134,76 +116,42 @@
 	},
 	{
 		"inputs": [],
-		"name": "getAllCredentialsOfUser",
+		"name": "getCredentials",
 		"outputs": [
 			{
 				"components": [
 					{
-						"internalType": "enum DIDRegistry.CredentialType",
-						"name": "credentialType",
-						"type": "uint8"
+						"internalType": "uint256",
+						"name": "credId",
+						"type": "uint256"
 					},
 					{
-						"components": [
-							{
-								"internalType": "string",
-								"name": "name",
-								"type": "string"
-							},
-							{
-								"internalType": "string",
-								"name": "gender",
-								"type": "string"
-							},
-							{
-								"internalType": "euint32",
-								"name": "dob",
-								"type": "uint256"
-							},
-							{
-								"internalType": "string",
-								"name": "signUrl",
-								"type": "string"
-							}
-						],
-						"internalType": "struct DIDRegistry.Aadhar",
-						"name": "aadhar",
-						"type": "tuple"
+						"internalType": "string",
+						"name": "credType",
+						"type": "string"
 					},
 					{
-						"components": [
-							{
-								"internalType": "uint256",
-								"name": "companyId",
-								"type": "uint256"
-							},
-							{
-								"internalType": "uint256",
-								"name": "joiningDate",
-								"type": "uint256"
-							},
-							{
-								"internalType": "string",
-								"name": "designation",
-								"type": "string"
-							},
-							{
-								"internalType": "euint32",
-								"name": "salary",
-								"type": "uint256"
-							},
-							{
-								"internalType": "string",
-								"name": "signUrl",
-								"type": "string"
-							}
-						],
-						"internalType": "struct DIDRegistry.Job",
-						"name": "job",
-						"type": "tuple"
+						"internalType": "string[]",
+						"name": "publicDataKeys",
+						"type": "string[]"
+					},
+					{
+						"internalType": "int256[]",
+						"name": "publicDataValues",
+						"type": "int256[]"
+					},
+					{
+						"internalType": "string[]",
+						"name": "encryptedDataKeys",
+						"type": "string[]"
+					},
+					{
+						"internalType": "euint256[]",
+						"name": "encryptedDataValues",
+						"type": "uint256[]"
 					}
 				],
-				"internalType": "struct DIDRegistry.Credential[]",
+				"internalType": "struct DecentralizedIDDirectory.Credential[]",
 				"name": "",
 				"type": "tuple[]"
 			}
@@ -212,63 +160,20 @@
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "getCurrentYear",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "companyId",
+				"name": "credId",
 				"type": "uint256"
 			},
 			{
-				"internalType": "bool",
-				"name": "isSalaryRequested",
-				"type": "bool"
-			},
-			{
-				"internalType": "uint8",
-				"name": "comparisonType",
-				"type": "uint8"
-			},
-			{
-				"internalType": "euint32",
-				"name": "comparisonSalary",
-				"type": "uint256"
+				"internalType": "bytes32",
+				"name": "publicKey",
+				"type": "bytes32"
 			}
 		],
-		"name": "getJob",
+		"name": "shareCredential",
 		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			},
-			{
-				"internalType": "string",
-				"name": "",
-				"type": "string"
-			},
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			},
 			{
 				"internalType": "string",
 				"name": "",
@@ -276,32 +181,6 @@
 			}
 		],
 		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "owner",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "_year",
-				"type": "uint256"
-			}
-		],
-		"name": "setCurrentYear",
-		"outputs": [],
-		"stateMutability": "nonpayable",
 		"type": "function"
 	}
 ]
