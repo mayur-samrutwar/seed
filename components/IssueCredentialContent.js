@@ -29,15 +29,13 @@ export default function IssueCredentialContent() {
     abi: abi,
     functionName: "addCredential",
   });
-  const { switchChain } = useSwitchChain();
-  const chainId = useChainId();
 
   useEffect(() => {
     const initializeFhenixClient = async () => {
       try {
         const provider = new JsonRpcProvider('https://api.helium.fhenix.zone');
         const client = new FhenixClient({ provider });
-        await client.init(); // Ensure the client is properly initialized
+        await client.init(); 
         setFhenixClient(client);
       } catch (error) {
         console.error("Failed to initialize Fhenix client:", error);
@@ -215,6 +213,7 @@ export default function IssueCredentialContent() {
 
       await writeContract({
         args: [
+          walletAddress,
           credentialType === 'new' ? newSchemaName : credentialType,
           publicDataKeys,
           encryptedDataKeys,
