@@ -12,20 +12,6 @@ import { FhenixClient } from "fhenixjs";
 
 export default function IssueCredentialContent() {
   const [fhenixClient, setFhenixClient] = useState(null);
-
-  useEffect(() => {
-    const initializeFhenixClient = async () => {
-      try {
-        const provider = new JsonRpcProvider('https://api.helium.fhenix.zone');
-        const client = new FhenixClient({ provider });
-        await client.init(); // Ensure the client is properly initialized
-        return client;
-      } catch (error) {
-        console.error("Failed to initialize Fhenix client:", error);
-        throw error;
-      }
-    };
-  }, []);
   const { toast } = useToast();
   const [credentialType, setCredentialType] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
@@ -45,6 +31,21 @@ export default function IssueCredentialContent() {
   });
   const { switchChain } = useSwitchChain();
   const chainId = useChainId();
+
+  useEffect(() => {
+    const initializeFhenixClient = async () => {
+      try {
+        const provider = new JsonRpcProvider('https://api.helium.fhenix.zone');
+        const client = new FhenixClient({ provider });
+        await client.init(); // Ensure the client is properly initialized
+        setFhenixClient(client);
+      } catch (error) {
+        console.error("Failed to initialize Fhenix client:", error);
+      }
+    };
+
+    initializeFhenixClient();
+  }, []);
 
   useEffect(() => {
     setProvider(new JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL));
@@ -68,10 +69,95 @@ export default function IssueCredentialContent() {
     fetchSchemas();
   }, []);
 
+  const handleFieldChange = (index, key, value) => {
+    const updatedFields = [...newSchemaFields];
+    if (key === 'value') {
+      // Convert to appropriate type based on field type
+      switch (updatedFields[index].type) {
+        case 'number':
+          value = value === '' ? '' : Number(value);
+          break;
+        case 'boolean':
+          value = value === 'true';
+          break;
+        // For other types, keep the value as is
+      }
+    }
+    updatedFields[index][key] = value;
+    setNewSchemaFields(updatedFields);
+  };
+
+  const renderExistingSchemaDetails = () => {
+    const schema = existingSchemas.find(s => s.name === credentialType);
+    return (
+      <div className="space-y-6">
+        {schema && schema.fields.map((field, index) => (
+          <div key={index}>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{field.name}</label>
+            <div className="flex space-x-2">
+              {field.type === 'boolean' ? (
+                <Select
+                  value={customSchemaValues[field.name]?.value?.toString() || ''}
+                  onValueChange={(value) => {
+                    const boolValue = value === 'true';
+                    setCustomSchemaValues(prev => ({
+                      ...prev,
+                      [field.name]: {...prev[field.name], value: boolValue}
+                    }));
+                  }}
+                >
+                  <SelectTrigger className="w-1/2">
+                    <SelectValue placeholder="Select value" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">True</SelectItem>
+                    <SelectItem value="false">False</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                  placeholder={`Enter ${field.name}`}
+                  value={customSchemaValues[field.name]?.value ?? ''}
+                  onChange={(e) => {
+                    let value = e.target.value;
+                    if (field.type === 'number') {
+                      value = value === '' ? '' : Number(value);
+                    }
+                    setCustomSchemaValues(prev => ({
+                      ...prev,
+                      [field.name]: {...prev[field.name], value}
+                    }));
+                  }}
+                  className="w-1/2"
+                />
+              )}
+              <Select
+                value={customSchemaValues[field.name]?.isEncrypted?.toString() || 'false'}
+                onValueChange={(value) => setCustomSchemaValues(prev => ({
+                  ...prev,
+                  [field.name]: {...prev[field.name], isEncrypted: value === 'true'}
+                }))}
+              >
+                <SelectTrigger className="w-1/2">
+                  <SelectValue placeholder="Encrypted?" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Encrypted</SelectItem>
+                  <SelectItem value="false">Not Encrypted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const issueCredential = async () => {
     setIsProcessingDialogOpen(true);
     setIsLoading(true);
-  
+
     try {
       if (credentialType === 'new') {
         // Save new schema to the database
@@ -85,35 +171,48 @@ export default function IssueCredentialContent() {
             fields: newSchemaFields,
           }),
         });
-  
+
         if (!response.ok) {
           throw new Error('Failed to add new schema');
         }
-  
+
         // After successfully adding the schema, update the existing schemas list
         setExistingSchemas([...existingSchemas, { name: newSchemaName, fields: newSchemaFields }]);
       }
-  
-      const fhenixClient = new FhenixClient({ provider });
-  
+
+      if (!fhenixClient) {
+        throw new Error('Fhenix client is not initialized');
+      }
+
       const publicDataKeys = [];
       const publicDataValues = [];
       const encryptedDataKeys = [];
       const encryptedDataValues = [];
-  
+
       const schemaFields = credentialType === 'new' ? newSchemaFields : existingSchemas.find(s => s.name === credentialType).fields;
-  
+
       for (const field of schemaFields) {
-        if (field.isEncrypted) {
+        const fieldValue = credentialType === 'new' ? field.value : customSchemaValues[field.name]?.value;
+        const isEncrypted = credentialType === 'new' ? field.isEncrypted : customSchemaValues[field.name]?.isEncrypted;
+
+        if (isEncrypted) {
           encryptedDataKeys.push(field.name);
-          const encryptedValue = await fhenixClient.encrypt_uint256(parseInt(field.value));
+          const encryptedValue = await fhenixClient.encrypt_uint256(BigInt(fieldValue));
           encryptedDataValues.push(encryptedValue);
         } else {
           publicDataKeys.push(field.name);
-          publicDataValues.push(parseInt(field.value));
+          publicDataValues.push(fieldValue);
         }
       }
-  
+
+      console.log("Credential Data:", {
+        credentialType: credentialType === 'new' ? newSchemaName : credentialType,
+        publicDataKeys,
+        encryptedDataKeys,
+        publicDataValues,
+        encryptedDataValues,
+      });
+
       await writeContract({
         args: [
           credentialType === 'new' ? newSchemaName : credentialType,
@@ -123,7 +222,7 @@ export default function IssueCredentialContent() {
           encryptedDataValues,
         ],
       });
-  
+
       toast({
         title: "Success",
         description: "Credential issued successfully.",
@@ -140,7 +239,6 @@ export default function IssueCredentialContent() {
       setIsLoading(false);
     }
   };
-  
 
   const resetForm = () => {
     setWalletAddress("");
@@ -158,12 +256,6 @@ export default function IssueCredentialContent() {
 
   const handleRemoveField = (index) => {
     const updatedFields = newSchemaFields.filter((_, i) => i !== index);
-    setNewSchemaFields(updatedFields);
-  };
-
-  const handleFieldChange = (index, key, value) => {
-    const updatedFields = [...newSchemaFields];
-    updatedFields[index][key] = value;
     setNewSchemaFields(updatedFields);
   };
 
@@ -271,55 +363,6 @@ export default function IssueCredentialContent() {
       </Button>
     </div>
   );
-
-  const renderExistingSchemaDetails = () => {
-    const schema = existingSchemas.find(s => s.name === credentialType);
-    return (
-      <div className="space-y-6">
-        {schema && schema.fields.map((field, index) => (
-          <div key={index}>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{field.name}</label>
-            <div className="flex space-x-2">
-              {field.type === 'boolean' ? (
-                <Select
-                  value={customSchemaValues[field.name]?.value || ''}
-                  onValueChange={(value) => setCustomSchemaValues({...customSchemaValues, [field.name]: {...customSchemaValues[field.name], value}})}
-                >
-                  <SelectTrigger className="w-1/2">
-                    <SelectValue placeholder="Select value" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">True</SelectItem>
-                    <SelectItem value="false">False</SelectItem>
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input
-                  type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
-                  placeholder={`Enter ${field.name}`}
-                  value={customSchemaValues[field.name]?.value || ''}
-                  onChange={(e) => setCustomSchemaValues({...customSchemaValues, [field.name]: {...customSchemaValues[field.name], value: e.target.value}})}
-                  className="w-1/2"
-                />
-              )}
-              <Select
-                value={customSchemaValues[field.name]?.isEncrypted?.toString() || 'false'}
-                onValueChange={(value) => setCustomSchemaValues({...customSchemaValues, [field.name]: {...customSchemaValues[field.name], isEncrypted: value === 'true'}})}
-              >
-                <SelectTrigger className="w-1/2">
-                  <SelectValue placeholder="Encrypted?" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="true">Encrypted</SelectItem>
-                  <SelectItem value="false">Not Encrypted</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
 
   const renderUserAddress = () => (
     <div className="space-y-6">

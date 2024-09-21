@@ -5,9 +5,7 @@ export default function Sidebar({ isCollapsed, setIsCollapsed, activePage, setAc
   const menuItems = [
     { icon: HomeIcon, label: "Home" },
     { icon: FileCheckIcon, label: "Issue Credential" },
-    { icon: ShieldCheckIcon, label: "Verify Credential" },
-    { icon: ClipboardCheckIcon, label: "Approval Request" },
-    { icon: Mail, label: "Messages" },
+    { icon: Mail, label: "Decrypt Data" },
   ]
 
   return (
