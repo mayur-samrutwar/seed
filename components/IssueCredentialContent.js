@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Loader2, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useWriteContract, useSwitchChain, useChainId } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import abi from '@/contracts/abi/did.json';
 import { JsonRpcProvider } from "ethers";
 import { FhenixClient } from "fhenixjs";
@@ -24,21 +24,18 @@ export default function IssueCredentialContent() {
   const [customSchemaValues, setCustomSchemaValues] = useState({});
   const [provider, setProvider] = useState(null);
 
-  const { writeContract, isLoading: isContractWriteLoading, isSuccess, isError, error } = useWriteContract({
-    address: process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS,
-    abi: abi,
-    functionName: "addCredential",
+  const { writeContract, data: hash } = useWriteContract();
+  const { isLoading: isTransactionLoading, isSuccess } = useWaitForTransactionReceipt({
+    hash,
   });
   
   useEffect(() => {
-    // Set the provider
     setProvider(new JsonRpcProvider('https://api.helium.fhenix.zone'));
   }, []);
 
   useEffect(() => {
-    // Initialize FhenixClient once the provider is set
     const initializeFhenixClient = async () => {
-      if (!provider) return; // Ensure provider is set
+      if (!provider) return;
 
       try {
         const client = new FhenixClient({ provider });
@@ -85,7 +82,6 @@ export default function IssueCredentialContent() {
         case 'boolean':
           value = value === 'true';
           break;
-        // For other types, keep the value as is
       }
     }
     updatedFields[index][key] = value;
@@ -165,7 +161,6 @@ export default function IssueCredentialContent() {
 
     try {
       if (credentialType === 'new') {
-        // Save new schema to the database
         const response = await fetch('/api/schema/addSchema', {
           method: 'POST',
           headers: {
@@ -180,8 +175,6 @@ export default function IssueCredentialContent() {
         if (!response.ok) {
           throw new Error('Failed to add new schema');
         }
-
-        // After successfully adding the schema, update the existing schemas list
         setExistingSchemas([...existingSchemas, { name: newSchemaName, fields: newSchemaFields }]);
       }
 
@@ -218,7 +211,10 @@ export default function IssueCredentialContent() {
         encryptedDataValues,
       });
 
-      await writeContract({
+      console.log("Contract write parameters:", {
+        address: process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS,
+        abi: abi,
+        functionName: "addCredential",
         args: [
           walletAddress,
           credentialType === 'new' ? newSchemaName : credentialType,
@@ -229,15 +225,45 @@ export default function IssueCredentialContent() {
         ],
       });
 
-      toast({
-        title: "Success",
-        description: "Credential issued successfully.",
-        variant: "default",
+      await writeContract({
+        address: process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS,
+        abi: abi,
+        functionName: "addCredential",
+        args: [
+          walletAddress,
+          credentialType === 'new' ? newSchemaName : credentialType,
+          publicDataKeys,
+          encryptedDataKeys,
+          publicDataValues,
+          encryptedDataValues,
+        ],
       });
+
+      // The transaction hash is now available in the 'hash' variable
+      console.log("Transaction hash:", hash);
+
+      // Wait for the transaction to be mined
+      // This is handled by useWaitForTransactionReceipt hook
+
+      if (isSuccess) {
+        toast({
+          title: "Success",
+          description: "Credential issued successfully.",
+          variant: "default",
+        });
+      } else {
+        throw new Error("Transaction failed");
+      }
     } catch (error) {
       console.error('Error issuing credential:', error);
       // Log the entire error object
-      console.log('Full error object:', error);
+      console.log('Full error object:', JSON.stringify(error, null, 2));
+      console.log('Error name:', error.name);
+      console.log('Error message:', error.message);
+      console.log('Error stack:', error.stack);
+      if (error.data) {
+        console.log('Error data:', error.data);
+      }
       toast({
         title: "Error",
         description: `Failed to issue credential. Please try again. Error: ${error.message}`,
@@ -403,7 +429,7 @@ export default function IssueCredentialContent() {
       )}
       <Button
         onClick={issueCredential}
-        disabled={isLoading || isContractWriteLoading}
+        disabled={isLoading || isTransactionLoading}
         className="w-full bg-black hover:bg-gray-800 text-white mt-4"
       >
         Issue Credential
@@ -453,7 +479,7 @@ export default function IssueCredentialContent() {
           {currentStep < 4 && (
             <Button
               onClick={handleNext}
-              disabled={isLoading || isContractWriteLoading}
+              disabled={isLoading || isTransactionLoading}
               className="ml-auto bg-black hover:bg-gray-800 text-white"
             >
               Next
@@ -464,7 +490,7 @@ export default function IssueCredentialContent() {
         <Dialog open={isProcessingDialogOpen} onOpenChange={setIsProcessingDialogOpen}>
           <DialogContent className="sm:max-w-[400px] p-6 bg-white rounded-lg shadow-lg">
             <div className="text-center space-y-4">
-              {isLoading || isContractWriteLoading ? (
+              {isLoading || isTransactionLoading ? (
                 <>
                   <h3 className="text-xl font-semibold mb-2">Processing</h3>
                   <div className="flex justify-center items-center">
@@ -477,21 +503,13 @@ export default function IssueCredentialContent() {
                   <h3 className="text-xl font-semibold mb-2">Success</h3>
                   <p className="text-green-600 font-medium">Credential issued successfully!</p>
                 </>
-              ) : isError ? (
+              ) : (
                 <>
                   <h3 className="text-xl font-semibold mb-2">Error</h3>
                   <p className="text-red-600 font-medium">Transaction failed. Please try again.</p>
-                  {error && (
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-600">Error details:</p>
-                      <pre className="text-xs text-left bg-gray-100 p-2 rounded mt-1 overflow-x-auto">
-                        {JSON.stringify(error, null, 2)}
-                      </pre>
-                    </div>
-                  )}
                 </>
-              ) : null}
-              {!isLoading && !isContractWriteLoading && (
+              )}
+              {!isLoading && !isTransactionLoading && (
                 <Button
                   onClick={resetForm}
                   className="w-full bg-black hover:bg-gray-800 text-white mt-4"
