@@ -24,18 +24,24 @@ export default function IssueCredentialContent() {
   const [customSchemaValues, setCustomSchemaValues] = useState({});
   const [provider, setProvider] = useState(null);
 
-  const { writeContract, isLoading: isContractWriteLoading, isSuccess, isError } = useWriteContract({
+  const { writeContract, isLoading: isContractWriteLoading, isSuccess, isError, error } = useWriteContract({
     address: process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS,
     abi: abi,
     functionName: "addCredential",
   });
+  
+  useEffect(() => {
+    // Set the provider
+    setProvider(new JsonRpcProvider('https://api.helium.fhenix.zone'));
+  }, []);
 
   useEffect(() => {
+    // Initialize FhenixClient once the provider is set
     const initializeFhenixClient = async () => {
+      if (!provider) return; // Ensure provider is set
+
       try {
-        const provider = new JsonRpcProvider('https://api.helium.fhenix.zone');
         const client = new FhenixClient({ provider });
-        await client.init(); 
         setFhenixClient(client);
       } catch (error) {
         console.error("Failed to initialize Fhenix client:", error);
@@ -43,11 +49,7 @@ export default function IssueCredentialContent() {
     };
 
     initializeFhenixClient();
-  }, []);
-
-  useEffect(() => {
-    setProvider(new JsonRpcProvider(process.env.NEXT_PUBLIC_RPC_URL));
-  }, []);
+  }, [provider]); // Depend on provider
 
   useEffect(() => {
     const fetchSchemas = async () => {
@@ -66,6 +68,11 @@ export default function IssueCredentialContent() {
 
     fetchSchemas();
   }, []);
+
+  useEffect(() => {
+    setProvider(new JsonRpcProvider('https://api.helium.fhenix.zone'));
+  }, []);
+  
 
   const handleFieldChange = (index, key, value) => {
     const updatedFields = [...newSchemaFields];
@@ -229,6 +236,8 @@ export default function IssueCredentialContent() {
       });
     } catch (error) {
       console.error('Error issuing credential:', error);
+      // Log the entire error object
+      console.log('Full error object:', error);
       toast({
         title: "Error",
         description: `Failed to issue credential. Please try again. Error: ${error.message}`,
@@ -472,6 +481,14 @@ export default function IssueCredentialContent() {
                 <>
                   <h3 className="text-xl font-semibold mb-2">Error</h3>
                   <p className="text-red-600 font-medium">Transaction failed. Please try again.</p>
+                  {error && (
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-600">Error details:</p>
+                      <pre className="text-xs text-left bg-gray-100 p-2 rounded mt-1 overflow-x-auto">
+                        {JSON.stringify(error, null, 2)}
+                      </pre>
+                    </div>
+                  )}
                 </>
               ) : null}
               {!isLoading && !isContractWriteLoading && (

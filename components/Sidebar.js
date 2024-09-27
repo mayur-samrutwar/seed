@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button"
-import { HomeIcon, FileCheckIcon, ShieldCheckIcon, ClipboardCheckIcon, UserIcon, ChevronLeftIcon, ChevronRightIcon, MailOpen, Mail } from "lucide-react"
+import { HomeIcon, FileCheckIcon, ChevronLeftIcon, ChevronRightIcon, Mail } from "lucide-react"
 
 export default function Sidebar({ isCollapsed, setIsCollapsed, activePage, setActivePage, isSigned }) {
   const menuItems = [

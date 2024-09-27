@@ -71,7 +71,7 @@ export default function AirbnbStyleDashboard() {
         return <VerifyCredentialContent />
       case "Approval Request":
         return <ApprovalRequestContent />
-      case "Messages":
+      case "Decrypt Data":
         return <DataContent />
       default:
         return null
