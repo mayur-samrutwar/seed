@@ -33,7 +33,6 @@ export default function IssueCredentialContent() {
     const provider = new BrowserProvider(window.ethereum);
     const initializeFhenixClient = async () => {
       if (!provider) return;
-
       try {
         const client = new FhenixClient({ provider });
         setFhenixClient(client);
@@ -41,9 +40,8 @@ export default function IssueCredentialContent() {
         console.error("Failed to initialize Fhenix client:", error);
       }
     };
-
     initializeFhenixClient();
-  }, [provider]); // Depend on provider
+  }, [provider]);
 
   useEffect(() => {
     const fetchSchemas = async () => {
@@ -66,7 +64,6 @@ export default function IssueCredentialContent() {
   const handleFieldChange = (index, key, value) => {
     const updatedFields = [...newSchemaFields];
     if (key === 'value') {
-      // Convert to appropriate type based on field type
       switch (updatedFields[index].type) {
         case 'number':
           value = value === '' ? '' : Number(value);
@@ -231,11 +228,7 @@ export default function IssueCredentialContent() {
         ],
       });
 
-      // The transaction hash is now available in the 'hash' variable
       console.log("Transaction hash:", hash);
-
-      // Wait for the transaction to be mined
-      // This is handled by useWaitForTransactionReceipt hook
 
       if (isSuccess) {
         toast({
@@ -248,7 +241,6 @@ export default function IssueCredentialContent() {
       }
     } catch (error) {
       console.error('Error issuing credential:', error);
-      // Log the entire error object
       console.log('Full error object:', JSON.stringify(error, null, 2));
       console.log('Error name:', error.name);
       console.log('Error message:', error.message);
