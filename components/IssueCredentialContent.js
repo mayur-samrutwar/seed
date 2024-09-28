@@ -7,8 +7,8 @@ import { Loader2, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import abi from '@/contracts/abi/did.json';
-import { JsonRpcProvider } from "ethers";
 import { FhenixClient } from "fhenixjs";
+import { BrowserProvider } from "ethers";
 
 export default function IssueCredentialContent() {
   const [fhenixClient, setFhenixClient] = useState(null);
@@ -28,12 +28,9 @@ export default function IssueCredentialContent() {
   const { isLoading: isTransactionLoading, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
-  
-  useEffect(() => {
-    setProvider(new JsonRpcProvider('https://api.helium.fhenix.zone'));
-  }, []);
 
   useEffect(() => {
+    const provider = new BrowserProvider(window.ethereum);
     const initializeFhenixClient = async () => {
       if (!provider) return;
 
@@ -65,11 +62,6 @@ export default function IssueCredentialContent() {
 
     fetchSchemas();
   }, []);
-
-  useEffect(() => {
-    setProvider(new JsonRpcProvider('https://api.helium.fhenix.zone'));
-  }, []);
-  
 
   const handleFieldChange = (index, key, value) => {
     const updatedFields = [...newSchemaFields];
