@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  runtime: "experimental-edge",
   reactStrictMode: true,
   webpack: (config, { isServer }) => {
     patchWasmModuleImport(config, isServer);

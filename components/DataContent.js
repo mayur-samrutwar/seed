@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { FhenixClient } from "fhenixjs";
@@ -8,19 +8,41 @@ import { Clipboard } from 'lucide-react';
 export default function DataContent() {
   const [decryptInput, setDecryptInput] = useState('');
   const [decryptedOutput, setDecryptedOutput] = useState('');
+  const [provider, setProvider] = useState(null);
+  const [fhenixClient, setFhenixClient] = useState(null);
+
+  useEffect(() => {
+    const initializeProvider = async () => {
+      const newProvider = new BrowserProvider(window.ethereum);
+      setProvider(newProvider);
+    };
+    initializeProvider();
+  }, []);
+
+  useEffect(() => {
+    const initializeFhenixClient = async () => {
+      if (!provider) return;
+      try {
+        const client = new FhenixClient({ provider });
+        setFhenixClient(client);
+      } catch (error) {
+        console.error("Failed to initialize Fhenix client:", error);
+      }
+    };
+    initializeFhenixClient();
+  }, [provider]);
 
   const handleDecrypt = async () => {
     try {
-      const provider = new BrowserProvider(window.ethereum);
-      const fhenixClient = new FhenixClient({ provider });
       const encryptedData = JSON.parse(decryptInput);
-      const decryptedValue = await fhenixClient.unseal(encryptedData);
+      const decryptedValue = await fhenixClient.unseal(process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS, JSON.stringify(encryptedData));
       setDecryptedOutput(decryptedValue.toString());
     } catch (error) {
       console.error('Decryption error:', error);
       setDecryptedOutput('Error occurred during decryption');
     }
   };
+  
 
   const pasteFromClipboard = async () => {
     try {
