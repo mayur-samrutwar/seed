@@ -1,17 +1,27 @@
-import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
-import { useAccount, useReadContract, useWriteContract } from 'wagmi';
+import { useState, useEffect } from 'react';
+import { Loader2, Copy, Check } from 'lucide-react';
+import { useAccount, useReadContract } from 'wagmi';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import abi from '@/contracts/abi/did.json';
+import { ethers } from 'ethers';
+import { BrowserProvider } from 'ethers';
+import { Contract } from 'ethers';
+import { useToast } from "@/hooks/use-toast";
 
 export default function HomeContent() {
   const { address, isConnected } = useAccount();
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isOutputDialogOpen, setIsOutputDialogOpen] = useState(false);
   const [selectedCredId, setSelectedCredId] = useState(null);
   const [shareAddress, setShareAddress] = useState('');
   const [sharedCredential, setSharedCredential] = useState(null);
+  const [provider, setProvider] = useState(null);
+  const [contract, setContract] = useState(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const { toast } = useToast();
 
   const { data: credentials, isError, isLoading, error, refetch } = useReadContract({
     address: process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS,
@@ -21,11 +31,15 @@ export default function HomeContent() {
     enabled: isConnected && address !== undefined,
   });
 
-  const { writeContract, isLoading: isSharing } = useWriteContract({
-    address: process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS,
-    abi: abi,
-    functionName: 'shareCredential',
-  });
+  useEffect(() => {
+    const initializeProvider = async () => {
+      const newProvider = new BrowserProvider(window.ethereum);
+      setProvider(newProvider);
+      const newContract = new Contract(process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS, abi, await newProvider.getSigner());
+      setContract(newContract);
+    };
+    initializeProvider();
+  }, []);
 
   const handleShare = async (credId) => {
     setSelectedCredId(credId);
@@ -33,13 +47,62 @@ export default function HomeContent() {
   };
 
   const confirmShare = async () => {
+    setIsSharing(true);
     try {
-      const result = await writeContract({
-        args: [selectedCredId, shareAddress],
-      });
-      setSharedCredential(result);
+      if (!contract) {
+        throw new Error('Contract is not initialized');
+      }
+
+      let publicKeyBytes32;
+      if (ethers.isAddress(shareAddress)) {
+        publicKeyBytes32 = ethers.zeroPadValue(shareAddress, 32);
+      } else {
+        publicKeyBytes32 = ethers.keccak256(ethers.toUtf8Bytes(shareAddress));
+      }
+
+      const result = await contract.shareCredential(selectedCredId, publicKeyBytes32);
+      
+      if (result && typeof result.wait === 'function') {
+        const receipt = await result.wait();
+        if (receipt.status === 1) {
+          setSharedCredential(result);
+          toast({
+            title: "Success",
+            description: "Credential shared successfully.",
+            variant: "default",
+          });
+        } else {
+          throw new Error("Transaction failed");
+        }
+      } else {
+        setSharedCredential(result);
+        toast({
+          title: "Success",
+          description: "Credential shared successfully.",
+          variant: "default",
+        });
+      }
+      setIsShareDialogOpen(false);
+      setIsOutputDialogOpen(true);
     } catch (error) {
       console.error('Error sharing credential:', error);
+      toast({
+        title: "Error",
+        description: `Failed to share credential. Please try again. Error: ${error.message}`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(sharedCredential);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
     }
   };
 
@@ -103,7 +166,7 @@ export default function HomeContent() {
             <DialogTitle>Share Credential</DialogTitle>
           </DialogHeader>
           <Input
-            placeholder="Enter recipient address"
+            placeholder="Enter recipient address or public key"
             value={shareAddress}
             onChange={(e) => setShareAddress(e.target.value)}
           />
@@ -112,12 +175,24 @@ export default function HomeContent() {
               {isSharing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Confirm'}
             </Button>
           </DialogFooter>
-          {sharedCredential && (
-            <div className="mt-4">
-              <h4 className="font-semibold">Shared Credential:</h4>
-              <p>{sharedCredential}</p>
-            </div>
-          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isOutputDialogOpen} onOpenChange={setIsOutputDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Shared Credential</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4">
+            <h4 className="font-semibold">Shared Credential:</h4>
+            <p className="break-all">{sharedCredential}</p>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleCopy} className="flex items-center">
+              {isCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+              {isCopied ? 'Copied!' : 'Copy'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

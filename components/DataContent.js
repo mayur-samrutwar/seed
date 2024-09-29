@@ -13,8 +13,8 @@ export default function DataContent() {
     try {
       const provider = new BrowserProvider(window.ethereum);
       const fhenixClient = new FhenixClient({ provider });
-      // Use the correct method for decryption
-      const decryptedValue = await fhenixClient.unseal_uint256(decryptInput);
+      const encryptedData = JSON.parse(decryptInput);
+      const decryptedValue = await fhenixClient.unseal(encryptedData);
       setDecryptedOutput(decryptedValue.toString());
     } catch (error) {
       console.error('Decryption error:', error);
