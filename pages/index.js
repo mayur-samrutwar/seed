@@ -4,8 +4,6 @@ import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import HomeContent from '@/components/HomeContent'
 import IssueCredentialContent from '@/components/IssueCredentialContent'
-import VerifyCredentialContent from '@/components/VerifyCredentialContent'
-import ApprovalRequestContent from '@/components/ApprovalRequestContent'
 import DataContent from "@/components/DataContent"
 
 export default function AirbnbStyleDashboard() {
