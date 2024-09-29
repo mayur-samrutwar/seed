@@ -65,10 +65,6 @@ export default function AirbnbStyleDashboard() {
         return <HomeContent />
       case "Issue Credential":
         return <IssueCredentialContent />
-      case "Verify Credential":
-        return <VerifyCredentialContent />
-      case "Approval Request":
-        return <ApprovalRequestContent />
       case "Decrypt Data":
         return <DataContent />
       default:
