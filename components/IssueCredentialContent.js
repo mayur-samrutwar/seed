@@ -5,10 +5,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Loader2, Plus, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import abi from '@/contracts/abi/did.json';
 import { FhenixClient } from "fhenixjs";
-import { BrowserProvider } from "ethers";
+import { BrowserProvider, Contract } from "ethers";
 
 export default function IssueCredentialContent() {
   const [fhenixClient, setFhenixClient] = useState(null);
@@ -23,14 +22,22 @@ export default function IssueCredentialContent() {
   const [existingSchemas, setExistingSchemas] = useState([]);
   const [customSchemaValues, setCustomSchemaValues] = useState({});
   const [provider, setProvider] = useState(null);
-
-  const { writeContract, data: hash } = useWriteContract();
-  const { isLoading: isTransactionLoading, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-  });
+  const [contract, setContract] = useState(null);
+  const [transactionHash, setTransactionHash] = useState(null);
+  const [isTransactionLoading, setIsTransactionLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
-    const provider = new BrowserProvider(window.ethereum);
+    const initializeProvider = async () => {
+      const newProvider = new BrowserProvider(window.ethereum);
+      setProvider(newProvider);
+      const newContract = new Contract(process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS, abi, await newProvider.getSigner());
+      setContract(newContract);
+    };
+    initializeProvider();
+  }, []);
+
+  useEffect(() => {
     const initializeFhenixClient = async () => {
       if (!provider) return;
       try {
@@ -184,7 +191,7 @@ export default function IssueCredentialContent() {
 
         if (isEncrypted) {
           encryptedDataKeys.push(field.name);
-          const encryptedValue = await fhenixClient.encrypt_uint256(BigInt(fieldValue));
+          const encryptedValue = await fhenixClient.encrypt_uint32(fieldValue);
           encryptedDataValues.push(encryptedValue);
         } else {
           publicDataKeys.push(field.name);
@@ -214,23 +221,35 @@ export default function IssueCredentialContent() {
         ],
       });
 
-      await writeContract({
-        address: process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS,
-        abi: abi,
-        functionName: "addCredential",
-        args: [
-          walletAddress,
-          credentialType === 'new' ? newSchemaName : credentialType,
-          publicDataKeys,
-          encryptedDataKeys,
-          publicDataValues,
-          encryptedDataValues,
-        ],
-      });
+      const estimatedGas = await contract.addCredential.estimateGas(
+        walletAddress,
+        credentialType === 'new' ? newSchemaName : credentialType,
+        publicDataKeys,
+        encryptedDataKeys,
+        publicDataValues,
+        encryptedDataValues
+      );
 
-      console.log("Transaction hash:", hash);
+      console.log("Estimated gas:", estimatedGas.toString());
 
-      if (isSuccess) {
+      const tx = await contract.addCredential(
+        walletAddress,
+        credentialType === 'new' ? newSchemaName : credentialType,
+        publicDataKeys,
+        encryptedDataKeys,
+        publicDataValues,
+        encryptedDataValues,
+        { gasLimit: estimatedGas} 
+      );
+
+      setTransactionHash(tx.hash);
+      setIsTransactionLoading(true);
+
+      const receipt = await tx.wait();
+      setIsTransactionLoading(false);
+
+      if (receipt.status === 1) {
+        setIsSuccess(true);
         toast({
           title: "Success",
           description: "Credential issued successfully.",
@@ -266,6 +285,9 @@ export default function IssueCredentialContent() {
     setNewSchemaName("");
     setNewSchemaFields([{ name: "", type: "string", value: "", isEncrypted: false }]);
     setCredentialType("");
+    setTransactionHash(null);
+    setIsTransactionLoading(false);
+    setIsSuccess(false);
   };
 
   const handleAddField = () => {

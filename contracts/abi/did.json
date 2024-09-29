@@ -66,7 +66,7 @@
 						"type": "bytes"
 					}
 				],
-				"internalType": "struct inEuint256[]",
+				"internalType": "struct inEuint32[]",
 				"name": "encryptedDataValues",
 				"type": "tuple[]"
 			}
@@ -151,7 +151,7 @@
 						"type": "string[]"
 					},
 					{
-						"internalType": "euint256[]",
+						"internalType": "euint32[]",
 						"name": "encryptedDataValues",
 						"type": "uint256[]"
 					}
