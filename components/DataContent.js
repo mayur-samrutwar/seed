@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { FhenixClient } from "fhenixjs";
+import { FhenixClient, getPermit } from "fhenixjs";
 import { BrowserProvider } from "ethers";
 import { Clipboard } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
 
 export default function DataContent() {
   const [decryptInput, setDecryptInput] = useState('');
   const [decryptedOutput, setDecryptedOutput] = useState('');
   const [provider, setProvider] = useState(null);
   const [fhenixClient, setFhenixClient] = useState(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const initializeProvider = async () => {
@@ -33,13 +35,49 @@ export default function DataContent() {
   }, [provider]);
 
   const handleDecrypt = async () => {
+    if (!fhenixClient) {
+      toast({
+        title: "Error",
+        description: "Fhenix client is not initialized.",
+        variant: "destructive",
+      });
+      return;
+    }
+  
     try {
-      const encryptedData = JSON.parse(decryptInput);
-      const decryptedValue = await fhenixClient.unseal(process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS, JSON.stringify(encryptedData));
-      setDecryptedOutput(decryptedValue.toString());
+      console.log("Initializing provider...");
+      const provider = new BrowserProvider(window.ethereum);
+  
+      console.log("Getting permit...");
+      const permit = await getPermit(process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS, provider);
+      console.log("Permit:", permit);
+  
+      console.log("Storing permit...");
+      await fhenixClient.storePermit(permit);
+  
+      console.log("Decrypting input...");
+      const decrypted = await fhenixClient.unseal(process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS, JSON.stringify(decryptInput));
+      console.log("Decrypted result:", decrypted);
+  
+      setDecryptedOutput(`Unsealed result: ${decrypted}`);
     } catch (error) {
       console.error('Decryption error:', error);
-      setDecryptedOutput('Error occurred during decryption');
+      let errorMessage = 'An error occurred during decryption. Please try again.';
+      if (error.message) {
+        errorMessage = `Error details: ${error.message}`;
+      }
+      if (error.stack) {
+        console.error('Error stack:', error.stack);
+      }
+      if (error.cause) {
+        console.error('Error cause:', error.cause);
+      }
+      toast({
+        title: "Decryption Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setDecryptedOutput(`Decryption failed: ${errorMessage}`);
     }
   };
   
@@ -50,6 +88,11 @@ export default function DataContent() {
       setDecryptInput(text);
     } catch (error) {
       console.error('Failed to read clipboard contents: ', error);
+      toast({
+        title: "Clipboard Error",
+        description: "Failed to read from clipboard. Please try pasting manually.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -78,10 +121,12 @@ export default function DataContent() {
       >
         Decrypt Data
       </Button>
-      <div className="w-full max-w-md p-4 bg-gray-100 rounded-md">
-        <h2 className="text-lg font-semibold mb-2">Decrypted Output:</h2>
-        <p className="break-all">{decryptedOutput}</p>
-      </div>
+      {decryptedOutput && (
+        <div className="w-full max-w-md p-4 bg-gray-100 rounded-md">
+          <h2 className="text-lg font-semibold mb-2">Decrypted Output:</h2>
+          <p className="break-all">{decryptedOutput}</p>
+        </div>
+      )}
     </div>
   );
 }
