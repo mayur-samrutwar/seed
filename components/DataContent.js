@@ -56,7 +56,7 @@ export default function DataContent() {
       await fhenixClient.storePermit(permit);
   
       console.log("Decrypting input...");
-      const decrypted = await fhenixClient.unseal(process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS, JSON.stringify(decryptInput));
+      const decrypted = await fhenixClient.unseal(process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS, decryptInput);
       console.log("Decrypted result:", decrypted);
   
       setDecryptedOutput(`Unsealed result: ${decrypted}`);
