@@ -9,6 +9,7 @@ import { ethers } from 'ethers';
 import { BrowserProvider } from 'ethers';
 import { Contract } from 'ethers';
 import { useToast } from "@/hooks/use-toast";
+import { FhenixClient, getPermit } from "fhenixjs";
 
 export default function HomeContent() {
   const { address, isConnected } = useAccount();
@@ -17,10 +18,13 @@ export default function HomeContent() {
   const [selectedCredId, setSelectedCredId] = useState(null);
   const [shareAddress, setShareAddress] = useState('');
   const [sharedCredential, setSharedCredential] = useState(null);
+  const [sharedPermit, setSharedPermit] = useState(null);
   const [provider, setProvider] = useState(null);
   const [contract, setContract] = useState(null);
   const [isSharing, setIsSharing] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isPermitCopied, setIsPermitCopied] = useState(false);
+  const [fhenixClient, setFhenixClient] = useState(null);
   const { toast } = useToast();
 
   const { data: credentials, isError, isLoading, error, refetch } = useReadContract({
@@ -30,6 +34,19 @@ export default function HomeContent() {
     account: address,
     enabled: isConnected && address !== undefined,
   });
+
+  useEffect(() => {
+    const initializeFhenixClient = async () => {
+      if (!provider) return;
+      try {
+        const client = new FhenixClient({ provider });
+        setFhenixClient(client);
+      } catch (error) {
+        console.error("Failed to initialize Fhenix client:", error);
+      }
+    };
+    initializeFhenixClient();
+  }, [provider]);
 
   useEffect(() => {
     const initializeProvider = async () => {
@@ -53,19 +70,28 @@ export default function HomeContent() {
         throw new Error('Contract is not initialized');
       }
 
-      let publicKeyBytes32;
-      if (ethers.isAddress(shareAddress)) {
-        publicKeyBytes32 = ethers.zeroPadValue(shareAddress, 32);
-      } else {
-        publicKeyBytes32 = ethers.keccak256(ethers.toUtf8Bytes(shareAddress));
-      }
+      // let publicKeyBytes32;
+      // if (ethers.isAddress(shareAddress)) {
+      //   publicKeyBytes32 = ethers.zeroPadValue(shareAddress, 32);
+      // } else {
+      //   publicKeyBytes32 = ethers.keccak256(ethers.toUtf8Bytes(shareAddress));
+      // }
 
-      const result = await contract.shareCredential(selectedCredId, publicKeyBytes32);
+      const permit = await getPermit(process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS, provider);
+      console.log("Permit:", permit);
+      fhenixClient.storePermit(permit);    
+      const permission = fhenixClient.extractPermitPermission(permit);
+      console.log("Permission:", permission);
+      console.log("Share Address:", shareAddress);
+      const result = await contract.shareCredential(selectedCredId, shareAddress);
+      console.log("Result:", result);
+      // const result = await contract.shareCredential(selectedCredId, publicKeyBytes32);
       
       if (result && typeof result.wait === 'function') {
         const receipt = await result.wait();
         if (receipt.status === 1) {
           setSharedCredential(result);
+          setSharedPermit(permit);
           toast({
             title: "Success",
             description: "Credential shared successfully.",
@@ -76,6 +102,7 @@ export default function HomeContent() {
         }
       } else {
         setSharedCredential(result);
+        setSharedPermit(permit);
         toast({
           title: "Success",
           description: "Credential shared successfully.",
@@ -96,11 +123,11 @@ export default function HomeContent() {
     }
   };
 
-  const handleCopy = async () => {
+  const handleCopy = async (text, setCopiedState) => {
     try {
-      await navigator.clipboard.writeText(sharedCredential);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
+      await navigator.clipboard.writeText(text);
+      setCopiedState(true);
+      setTimeout(() => setCopiedState(false), 2000);
     } catch (err) {
       console.error('Failed to copy text: ', err);
     }
@@ -185,14 +212,20 @@ export default function HomeContent() {
           </DialogHeader>
           <div className="mt-4">
             <h4 className="font-semibold">Shared Credential:</h4>
-            <p className="break-all">{sharedCredential}</p>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleCopy} className="flex items-center">
+            <p className="break-all">{JSON.stringify(sharedCredential)}</p>
+            <Button onClick={() => handleCopy(JSON.stringify(sharedCredential), setIsCopied)} className="flex items-center mt-2">
               {isCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-              {isCopied ? 'Copied!' : 'Copy'}
+              {isCopied ? 'Copied!' : 'Copy Credential'}
             </Button>
-          </DialogFooter>
+          </div>
+          <div className="mt-4">
+            <h4 className="font-semibold">Permit:</h4>
+            <p className="break-all">{JSON.stringify(sharedPermit)}</p>
+            <Button onClick={() => handleCopy(JSON.stringify(sharedPermit), setIsPermitCopied)} className="flex items-center mt-2">
+              {isPermitCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+              {isPermitCopied ? 'Copied!' : 'Copy Permit'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

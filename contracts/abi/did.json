@@ -1,37 +1,5 @@
 [
 	{
-		"inputs": [],
-		"name": "InvalidShortString",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "SignerNotMessageSender",
-		"type": "error"
-	},
-	{
-		"inputs": [],
-		"name": "SignerNotOwner",
-		"type": "error"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "string",
-				"name": "str",
-				"type": "string"
-			}
-		],
-		"name": "StringTooLong",
-		"type": "error"
-	},
-	{
-		"anonymous": false,
-		"inputs": [],
-		"name": "EIP712DomainChanged",
-		"type": "event"
-	},
-	{
 		"inputs": [
 			{
 				"internalType": "address",
@@ -75,6 +43,38 @@
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "InvalidShortString",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "SignerNotMessageSender",
+		"type": "error"
+	},
+	{
+		"inputs": [],
+		"name": "SignerNotOwner",
+		"type": "error"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "string",
+				"name": "str",
+				"type": "string"
+			}
+		],
+		"name": "StringTooLong",
+		"type": "error"
+	},
+	{
+		"anonymous": false,
+		"inputs": [],
+		"name": "EIP712DomainChanged",
+		"type": "event"
 	},
 	{
 		"inputs": [],
@@ -172,9 +172,21 @@
 				"type": "uint256"
 			},
 			{
-				"internalType": "bytes32",
-				"name": "publicKey",
-				"type": "bytes32"
+				"components": [
+					{
+						"internalType": "bytes32",
+						"name": "publicKey",
+						"type": "bytes32"
+					},
+					{
+						"internalType": "bytes",
+						"name": "signature",
+						"type": "bytes"
+					}
+				],
+				"internalType": "struct Permission",
+				"name": "signature",
+				"type": "tuple"
 			}
 		],
 		"name": "shareCredential",

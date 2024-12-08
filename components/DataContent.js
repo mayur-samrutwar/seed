@@ -11,6 +11,7 @@ export default function DataContent() {
   const [decryptedOutput, setDecryptedOutput] = useState('');
   const [provider, setProvider] = useState(null);
   const [fhenixClient, setFhenixClient] = useState(null);
+  const [permissionInput, setPermissionInput] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -45,17 +46,11 @@ export default function DataContent() {
     }
   
     try {
-      console.log("Initializing provider...");
-      const provider = new BrowserProvider(window.ethereum);
-  
-      console.log("Getting permit...");
-      const permit = await getPermit(process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS, provider);
-      console.log("Permit:", permit);
-  
-      console.log("Storing permit...");
-      await fhenixClient.storePermit(permit);
-  
-      console.log("Decrypting input...");
+      // Get and store the permit first
+      const sharedPermit = permissionInput;
+      const permission = fhenixClient.extractPermitPermission(sharedPermit);
+      fhenixClient.storePermit(sharedPermit); 
+      // Now attempt to decrypt
       const decrypted = await fhenixClient.unseal(process.env.NEXT_PUBLIC_DID_CONTRACT_ADDRESS, decryptInput);
       console.log("Decrypted result:", decrypted);
   
@@ -82,10 +77,10 @@ export default function DataContent() {
   };
   
 
-  const pasteFromClipboard = async () => {
+  const pasteFromClipboard = async (setter) => {
     try {
       const text = await navigator.clipboard.readText();
-      setDecryptInput(text);
+      setter(text);
     } catch (error) {
       console.error('Failed to read clipboard contents: ', error);
       toast({
@@ -108,7 +103,23 @@ export default function DataContent() {
           rows={4}
         />
         <Button
-          onClick={pasteFromClipboard}
+          onClick={() => pasteFromClipboard(setDecryptInput)}
+          className="ml-2 p-2 self-start"
+          variant="outline"
+        >
+          <Clipboard size={16} />
+        </Button>
+      </div>
+      <div className="w-full max-w-md mb-4 flex">
+        <Textarea
+          placeholder="Enter permission data"
+          value={permissionInput}
+          onChange={(e) => setPermissionInput(e.target.value)}
+          className="flex-grow"
+          rows={4}
+        />
+        <Button
+          onClick={() => pasteFromClipboard(setPermissionInput)}
           className="ml-2 p-2 self-start"
           variant="outline"
         >
